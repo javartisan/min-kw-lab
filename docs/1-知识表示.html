@@ -208,6 +208,104 @@
 <li>多条三元组连成 <strong>RDF 图</strong></li>
 </ul>
 <p><strong>为什么重要</strong>：同一事实用标准结构表达，不同系统能交换、能合并。</p>
+<h3>Turtle（TTL）：RDF 的手写序列化格式</h3>
+<p><strong>TTL 不是编程语言</strong>，而是一种<strong>数据序列化格式</strong>——准确说是 RDF 的文本语法，全称 <strong>Terse RDF Triple Language（Turtle）</strong>，W3C 标准，文件扩展名 <code>.ttl</code>。</p>
+<p>它干的事：用纯文本把知识图谱的<strong>三元组（主语–谓语–宾语）</strong>写出来，一条（或一组缩写）以<strong>句号 <code>.</code></strong> 结束。</p>
+<pre><code class="language-turtle">@prefix ex: &lt;http://example.org/&gt; .
+
+ex:张三  a        ex:人物 ;
+        ex:年龄    "30" ;
+        ex:任职于  ex:字节跳动 .
+</code></pre>
+<p>上面这段等价于三条完整三元组：</p>
+<pre><code class="language-text">(ex:张三, rdf:type,   ex:人物)
+(ex:张三, ex:年龄,    "30")
+(ex:张三, ex:任职于,  ex:字节跳动)
+</code></pre>
+<p><strong>常用语法点：</strong></p>
+<table>
+<thead>
+<tr>
+<th>写法</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>a</code></td>
+<td>简写 <code>rdf:type</code>（「张三 是 人物类的实例」）</td>
+</tr>
+<tr>
+<td><code>;</code></td>
+<td>同一主语，换谓语继续写</td>
+</tr>
+<tr>
+<td><code>,</code></td>
+<td>同一主语 + 谓语，换宾语继续写</td>
+</tr>
+<tr>
+<td><code>.</code></td>
+<td>一个三元组（或一组缩写）结束</td>
+</tr>
+<tr>
+<td><code>@prefix</code></td>
+<td>声明命名空间前缀，避免写长 URI</td>
+</tr>
+</tbody></table>
+<p>逗号缩写示例：</p>
+<pre><code class="language-turtle">ex:贵州茅台  ex:别名  "茅台" , "Kweichow Moutai" .
+# 同一主语+谓语，两个宾语 → 两条三元组
+</code></pre>
+<p><strong>在知识图谱里的典型用途：</strong></p>
+<ul>
+<li>写本体（OWL 文件常用 <code>.ttl</code> 保存）——本仓库示例：<a href="examples/securities-mini.ttl"><code>docs/examples/securities-mini.ttl</code></a></li>
+<li>存 / 交换 RDF 三元组数据</li>
+<li>被 Protégé、Jena、GraphDB 等工具直接读写</li>
+</ul>
+<p><strong>同族 RDF 序列化格式对照：</strong></p>
+<table>
+<thead>
+<tr>
+<th>格式</th>
+<th>特点</th>
+<th>何时用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Turtle（.ttl）</strong></td>
+<td>可读性最好，支持 <code>;</code> / <code>,</code> / <code>a</code> 缩写</td>
+<td><strong>手写本体与示例的首选</strong></td>
+</tr>
+<tr>
+<td><strong>N-Triples（.nt）</strong></td>
+<td>更简单：每行一个完整三元组，几乎无缩写</td>
+<td>批量导出、流式处理、机器友好</td>
+</tr>
+<tr>
+<td><strong>JSON-LD</strong></td>
+<td>JSON 形态</td>
+<td>Web / 前端 / API 友好</td>
+</tr>
+<tr>
+<td><strong>RDF/XML</strong></td>
+<td>最早的 XML 形式</td>
+<td>遗留系统互操作</td>
+</tr>
+<tr>
+<td><strong>N3（Notation3）</strong></td>
+<td>表达力更强；Turtle 是它的子集</td>
+<td>了解谱系即可，日常多用 Turtle</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>口诀：<strong>RDF 是模型（三元组），Turtle 是写法（.ttl 文本）</strong>——同一张图可以存成 .ttl / .nt / JSON-LD，语义不变。</p>
+</blockquote>
+<p>证券迷你对照（与后文 OWL 示例同构）：</p>
+<pre><code class="language-turtle">@prefix : &lt;http://example.org/sec#&gt; .
+
+:Moutai  a        :ListedCompany ;   # a = rdf:type
+         :listedAs :S600519 .
+:S600519 a        :Stock .
+</code></pre>
 <h3>RDFS：轻量词汇层</h3>
 <p><strong>RDFS</strong> = <strong>RDF Schema</strong>（RDF 模式 / RDF 词汇描述语言）。</p>
 <ul>
@@ -389,9 +487,11 @@ RDF   ← 底层数据模型（三元组）
 </ul>
 <p>实务：小项目用 RDFS 思想（甚至直接落到 Neo4j Schema）往往够用；要严格语义互操作或自动推理，再上 OWL。</p>
 <h3>RDF 栈速记</h3>
-<pre><code class="language-text">OWL（强逻辑） ⊃ RDFS（轻词汇） ⊃ RDF（三元组） ⊃ IRI + 字面量
+<pre><code class="language-text">OWL（强逻辑） ⊃ RDFS（轻词汇） ⊃ RDF（三元组模型）
+                                      ↑
+                         序列化写法：Turtle / N-Triples / JSON-LD / RDF-XML …
 </code></pre>
-<p>（表达能力上大致如此；OWL 语句本身也常以 RDF 三元组形式序列化。）</p>
+<p>（表达能力上大致如此；OWL 语句本身也常以 RDF 三元组形式序列化，手写多用 <strong>Turtle</strong>。）</p>
 <h3>和 Neo4j 属性图怎么对照</h3>
 <table>
 <thead>
@@ -422,7 +522,8 @@ RDF   ← 底层数据模型（三元组）
 </blockquote>
 <h3>速记</h3>
 <ul>
-<li>RDF：<strong>统一的「主-谓-宾」信封</strong></li>
+<li>RDF：<strong>统一的「主-谓-宾」信封</strong>（模型）</li>
+<li>Turtle（.ttl）：<strong>信封的手写写法</strong>（序列化，不是编程语言）</li>
 <li>RDFS：<strong>信封上的轻量标签（类层次、定义域/值域）</strong></li>
 <li>OWL：<strong>在信封上写清更强逻辑规则，让机器会推</strong></li>
 </ul>
@@ -534,16 +635,18 @@ RDF   ← 底层数据模型（三元组）
 <li>本体的四个基本构件是什么？</li>
 <li>TBox 和 ABox 各装什么？各举一个证券例子。</li>
 <li>为什么说 RDF 的基本单位是三元组？</li>
+<li>Turtle（TTL）是编程语言吗？<code>a</code> / <code>;</code> / <code>.</code> 各表示什么？</li>
 <li>RDFS 和 OWL 差在哪一档？</li>
 <li>TransE 的几何直觉是什么？</li>
 <li>符号表示与 Embedding 如何分工？</li>
 </ol>
-<p><strong>参考答案要点</strong>：①类/个体/属性/公理 ②TBox=模式规矩（如子类/互斥）；ABox=实例事实（如茅台是上市公司） ③主谓宾统一编码事实 ④OWL 逻辑表达与推理更强 ⑤头+关系≈尾 ⑥符号保真与可解释，向量做补全与相似计算。</p>
+<p><strong>参考答案要点</strong>：①类/个体/属性/公理 ②TBox=模式规矩（如子类/互斥）；ABox=实例事实（如茅台是上市公司） ③主谓宾统一编码事实 ④不是，是 RDF 文本序列化；<code>a</code>=rdf:type，<code>;</code>=同主语换谓，<code>.</code>=结束 ⑤OWL 逻辑表达与推理更强 ⑥头+关系≈尾 ⑦符号保真与可解释，向量做补全与相似计算。</p>
 <hr>
 <h2>建议学习顺序</h2>
 <ol>
 <li>先画本领域 <strong>Ontology / TBox 草图</strong>（类 + 关系 + 少量公理）</li>
 <li>用 <strong>三元组思维</strong>检查每条业务事实（ABox）能否写成 <code>(s,p,o)</code></li>
+<li>用 <strong>Turtle（.ttl）</strong> 手写一小段，再用 Protégé 打开对照</li>
 <li>落到 <strong>Neo4j</strong>（本仓库已在做）</li>
 <li>有规模与补全需求时再学 <strong>Embedding</strong></li>
 </ol>

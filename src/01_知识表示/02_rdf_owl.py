@@ -4,11 +4,13 @@
 学习小点：RDF / OWL
 一句话：RDF 用三元组写事实；OWL 在其上加公理，让机器能推理。
 
-对应笔记：docs/1-知识表示.html → RDF/OWL、TBox/ABox
+对应笔记：docs/1-知识表示.html → RDF/OWL、Turtle（TTL）、TBox/ABox
 对照文件：docs/examples/securities-mini.ttl
 
-TBox（模式层）= 类 / 属性 / 公理；ABox（数据层）= 个体与断言。
-推理 ≈ 用 TBox 规矩去补全或校验 ABox 事实。
+要点：
+  - TTL 不是编程语言，是 RDF 的文本序列化（Turtle）
+  - TBox（模式层）= 类 / 属性 / 公理；ABox（数据层）= 个体与断言
+  - 推理 ≈ 用 TBox 规矩去补全或校验 ABox 事实
 """
 
 from __future__ import annotations

@@ -15,6 +15,8 @@
 
 from __future__ import annotations
 
+import json
+import traceback
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -42,12 +44,31 @@ class Individual:
 
 @dataclass
 class ObjectProperty:
-    """对象属性：实体 → 实体 的关系，如 LISTED_AS。"""
+    """
+    对象属性（Object Property）：连接「实体 → 实体」的关系谓词。
 
-    name: str
-    domain: str  # 定义域：起点必须属于的类
-    range: str  # 值域：终点必须属于的类
-    min_card_on_range: int = 0  # 对 range 侧的最小基数（简化公理）
+    和数据属性的差别：
+      - 对象属性：两端都是个体（节点），如 贵州茅台 —LISTED_AS→ 600519
+      - 数据属性：一端是个体，一端是字面量，如 600519.code = "600519"
+        （本脚本里数据属性挂在 Individual.data_props 上，不单独建类）
+
+    证券举例 — LISTED_AS（上市为）：
+      domain = ListedCompany   # 谁可以当起点：上市公司
+      range  = Stock           # 谁可以当终点：股票
+      合法事实：贵州茅台(ListedCompany) —LISTED_AS→ 600519(Stock)
+      非法事实：白酒(Industry) —LISTED_AS→ 600519
+                ↑ 起点类型不在定义域里，assert_fact 会报错
+
+    OWL/Turtle 对照：
+      :listedAs a owl:ObjectProperty ;
+                rdfs:domain :ListedCompany ;
+                rdfs:range  :Stock .
+    """
+
+    name: str  # 关系名，如 "LISTED_AS" / "BELONGS_TO"
+    domain: str  # 定义域：起点个体必须属于（或其子类）的类
+    range: str  # 值域：终点个体必须属于（或其子类）的类
+    min_card_on_range: int = 0  # 简化公理：每个 range 侧个体至少被连几条（如股票不能「孤儿」）
 
 
 @dataclass
@@ -57,7 +78,7 @@ class Ontology:
     classes: dict[str, OntologyClass] = field(default_factory=dict)
     properties: dict[str, ObjectProperty] = field(default_factory=dict)
     individuals: dict[str, Individual] = field(default_factory=dict)
-    facts: list[tuple[str, str, str]] = field(default_factory=list)  # (s, p, o)
+    facts: list[tuple[str, str, str]] = field(default_factory=list)  # (subject, predicate, object)
 
     def add_class(self, name: str, parent: Optional[str] = None) -> None:
         self.classes[name] = OntologyClass(name, parent)
@@ -96,6 +117,44 @@ class Ontology:
             )
 
         self.facts.append((subject, predicate, obj))
+
+    def to_dict(self) -> dict:
+        """把本体转成可 JSON 序列化的字典（便于查看 / 落盘）。"""
+        return {
+            "TBox": {
+                "classes": [
+                    {"name": c.name, "parent": c.parent}
+                    for c in self.classes.values()
+                ],
+                "object_properties": [
+                    {
+                        "name": p.name,
+                        "domain": p.domain,
+                        "range": p.range,
+                        "min_card_on_range": p.min_card_on_range,
+                    }
+                    for p in self.properties.values()
+                ],
+            },
+            "ABox": {
+                "individuals": [
+                    {
+                        "name": i.name,
+                        "class_name": i.class_name,
+                        "data_props": i.data_props,
+                    }
+                    for i in self.individuals.values()
+                ],
+                "facts": [
+                    {"subject": s, "predicate": p, "object": o}
+                    for s, p, o in self.facts
+                ],
+            },
+        }
+
+    def to_json(self, indent: int = 2, ensure_ascii: bool = False) -> str:
+        """JSON 字符串；ensure_ascii=False 保留中文。"""
+        return json.dumps(self.to_dict(), indent=indent, ensure_ascii=ensure_ascii)
 
 
 def build_securities_ontology() -> Ontology:
@@ -150,6 +209,9 @@ def demo() -> None:
     print("=" * 60)
 
     onto = build_securities_ontology()
+
+    print("\n【onto JSON 序列化】")
+    print(onto.to_json())
 
     print("\n【类层次】")
     for name, cls in onto.classes.items():

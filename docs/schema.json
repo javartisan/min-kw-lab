@@ -1,0 +1,49 @@
+{
+  "TBox": {
+    "classes": [
+      {
+        "name": "Company",
+        "parent": null
+      },
+      {
+        "name": "ListedCompany",
+        "parent": "Company"
+      },
+      {
+        "name": "Stock",
+        "parent": null
+      }
+    ],
+    "object_properties": [
+      {
+        "name": "LISTED_AS",
+        "domain": "ListedCompany",
+        "range": "Stock",
+        "min_card_on_range": 1
+      }
+    ]
+  },
+  "ABox": {
+    "individuals": [
+      {
+        "name": "贵州茅台",
+        "class_name": "ListedCompany",
+        "data_props": {}
+      },
+      {
+        "name": "600519",
+        "class_name": "Stock",
+        "data_props": {
+          "code": "600519"
+        }
+      }
+    ],
+    "facts": [
+      {
+        "subject": "贵州茅台",
+        "predicate": "LISTED_AS",
+        "object": "600519"
+      }
+    ]
+  }
+}
