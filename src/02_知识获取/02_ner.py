@@ -16,6 +16,26 @@ from typing import List
 
 @dataclass
 class Span:
+    """
+    NER 的最小输出单位：原文里「从哪到哪是一个实体，以及它是什么类」。
+
+    字段：
+      start — 在原文中的起始下标（含）
+      end   — 结束下标（不含，Python 切片风格；text[start:end] == text）
+      text  — 这段原文内容
+      label — 实体类型（Company / Stock / Industry …）
+
+    对应 NER 两步：
+      Detection（找边界）      → start / end / text
+      Classification（定类型） → label
+
+    例子 — 原文「贵州茅台的股票代码是600519。」：
+      Span(0, 4,  "贵州茅台", "Company")
+      Span(10, 16, "600519",  "Stock")
+
+    后续 RE（关系抽取）通常在这些 Span 两两之间判定有没有边。
+    """
+
     start: int
     end: int
     text: str
