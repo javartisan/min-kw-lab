@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# ↑ 指定用 python3 解释器运行；声明源文件为 UTF-8，支持中文注释与字符串
 """
 学习小点：RDF / OWL
 一句话：RDF 用三元组写事实；OWL 在其上加公理，让机器能推理。
@@ -13,9 +14,9 @@
   - 推理 ≈ 用 TBox 规矩去补全或校验 ABox 事实
 """
 
-from __future__ import annotations
+from __future__ import annotations  # 允许类型注解里写 list[str]、str | None 等现代写法（兼容旧运行时解析）
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field  # dataclass：少写样板代码；field：给可变默认值（如 list）安全初始化
 
 
 # ---------------------------------------------------------------------------
@@ -24,10 +25,10 @@ from dataclasses import dataclass, field
 
 # 教学简化：用短名字符串代替完整 IRI
 # 真实工程里应是 http://example.org/sec#Moutai 这类全球唯一标识
-Triple = tuple[str, str, str]
+Triple = tuple[str, str, str]  # 类型别名：一条三元组 = (主语str, 谓语str, 宾语str)
 
 
-@dataclass
+@dataclass  # 自动生成 __init__ / __repr__ 等，把下面字段变成实例属性
 class RdfGraph:
     """
     【迷你 RDF 图】内存中的三元组集合。
@@ -39,6 +40,7 @@ class RdfGraph:
       triples — [(主语, 谓语, 宾语), ...]，顺序即插入顺序
     """
 
+    # 图的全部内容：三元组列表；default_factory=list 表示每个实例各自新建空列表（避免共享可变默认值）
     triples: list[Triple] = field(default_factory=list)
 
     def add(self, s: str, p: str, o: str) -> None:
@@ -58,14 +60,14 @@ class RdfGraph:
           g.add("Moutai", "rdf:type", "ListedCompany")
           # 读作：Moutai 的类型是 ListedCompany
         """
-        self.triples.append((s, p, o))
+        self.triples.append((s, p, o))  # 把 (主语, 谓语, 宾语) 元组追加到图末尾
 
     def ask(
-        self,
-        s: str | None = None,
-        p: str | None = None,
-        o: str | None = None,
-    ) -> list[Triple]:
+        self,  # 当前 RDF 图实例
+        s: str | None = None,  # 可选：限定主语；None 表示该位通配
+        p: str | None = None,  # 可选：限定谓语；None 表示该位通配
+        o: str | None = None,  # 可选：限定宾语；None 表示该位通配
+    ) -> list[Triple]:  # 返回所有命中的三元组
         """
         按「模式匹配」查询三元组（SPARQL 最简 BGP 的直觉版）。
 
@@ -84,16 +86,16 @@ class RdfGraph:
           g.ask(p="rdf:type")               → 所有类型断言
           g.ask(s="Moutai", p="rdf:type")   → 茅台的类型有哪些
         """
-        out: list[Triple] = []
-        for t in self.triples:
-            if s is not None and t[0] != s:
+        out: list[Triple] = []  # 存放查询命中结果
+        for t in self.triples:  # 逐条扫描图中已有三元组（教学用暴力匹配）
+            if s is not None and t[0] != s:  # 若指定了主语且当前主语不匹配 → 跳过
+                continue  # 进入下一条三元组
+            if p is not None and t[1] != p:  # 若指定了谓语且当前谓语不匹配 → 跳过
                 continue
-            if p is not None and t[1] != p:
+            if o is not None and t[2] != o:  # 若指定了宾语且当前宾语不匹配 → 跳过
                 continue
-            if o is not None and t[2] != o:
-                continue
-            out.append(t)
-        return out
+            out.append(t)  # 三个位置都通过（或通配）→ 记为命中
+        return out  # 返回命中列表（可能为空列表）
 
 
 def load_securities_facts() -> RdfGraph:
@@ -111,20 +113,20 @@ def load_securities_facts() -> RdfGraph:
       :ListedCompany rdfs:subClassOf :Company .
       :Moutai a :ListedCompany ; :listedAs :S600519 .
     """
-    g = RdfGraph()
+    g = RdfGraph()  # 新建一张空的内存 RDF 图
 
     # ----- TBox：术语 / 模式 -----
-    g.add("ListedCompany", "rdfs:subClassOf", "Company")  # 子类公理
-    g.add("Person", "owl:disjointWith", "Company")  # 互斥公理
-    g.add("listedAs", "rdfs:domain", "ListedCompany")  # 属性定义域
-    g.add("listedAs", "rdfs:range", "Stock")  # 属性值域
+    g.add("ListedCompany", "rdfs:subClassOf", "Company")  # 公理：上市公司是公司的子类
+    g.add("Person", "owl:disjointWith", "Company")  # 公理：人与公司互斥（不能同时成立）
+    g.add("listedAs", "rdfs:domain", "ListedCompany")  # 公理：listedAs 的起点必须是上市公司
+    g.add("listedAs", "rdfs:range", "Stock")  # 公理：listedAs 的终点必须是股票
 
     # ----- ABox：断言 / 实例 -----
-    g.add("Moutai", "rdf:type", "ListedCompany")
-    g.add("Moutai", "listedAs", "S600519")
-    g.add("S600519", "rdf:type", "Stock")
-    g.add("Moutai", "rdfs:label", "贵州茅台")  # 人类可读标签（字面量）
-    return g
+    g.add("Moutai", "rdf:type", "ListedCompany")  # 事实：茅台是上市公司实例
+    g.add("Moutai", "listedAs", "S600519")  # 事实：茅台上市为股票 S600519
+    g.add("S600519", "rdf:type", "Stock")  # 事实：S600519 是股票实例
+    g.add("Moutai", "rdfs:label", "贵州茅台")  # 事实：给人看的中文标签（字面量）
+    return g  # 返回已填充显式三元组的图（此时还没有「推出」的隐含类型）
 
 
 def rdfs_type_closure(g: RdfGraph) -> list[Triple]:
@@ -150,24 +152,25 @@ def rdfs_type_closure(g: RdfGraph) -> list[Triple]:
     注意：
       真实工程用 HermiT/Pellet/ELK；这里用手写循环演示「推理在干什么」。
     """
-    inferred: list[Triple] = []
-    known = set(g.triples)  # 用 set 便于 O(1) 判断「是否已有」
+    inferred: list[Triple] = []  # 只收集「新推出」的三元组，便于和显式事实对比
+    known = set(g.triples)  # 把已有三元组放进集合，便于 O(1) 判断是否已存在
 
-    changed = True
-    while changed:
-        changed = False
-        # 拆出当前所有类型断言与子类公理
+    changed = True  # 标记本轮是否推出了新事实；用于控制是否继续迭代
+    while changed:  # 反复推理直到某一轮没有任何新增（达到不动点）
+        changed = False  # 先假定本轮无新增；下面一旦新增就改回 True
+        # 从当前 known 中抽出所有「类型断言」：(个体, 类)
         type_facts = [(s, o) for s, p, o in known if p == "rdf:type"]
+        # 从当前 known 中抽出所有「子类公理」：(子类, 父类)
         subclass = [(s, o) for s, p, o in known if p == "rdfs:subClassOf"]
-        for x, c in type_facts:
-            for child, parent in subclass:
-                if c == child:
-                    neo = (x, "rdf:type", parent)
-                    if neo not in known:
-                        known.add(neo)
-                        inferred.append(neo)
-                        changed = True  # 有新增，可能触发下一轮传递
-    return inferred
+        for x, c in type_facts:  # 遍历：个体 x 属于类 c
+            for child, parent in subclass:  # 遍历：child 是 parent 的子类
+                if c == child:  # 若 x 的类恰好是某个子类 child
+                    neo = (x, "rdf:type", parent)  # 则推出：x 也应属于父类 parent
+                    if neo not in known:  # 若这条推出还没出现过
+                        known.add(neo)  # 记入 known，供后续轮次继续传递
+                        inferred.append(neo)  # 同时记入「新推出」列表，供 demo 打印
+                        changed = True  # 有新增 → 可能还能再推出更上层父类，继续 while
+    return inferred  # 返回本函数新推出的全部类型三元组
 
 
 def check_disjoint(g: RdfGraph, inferred: list[Triple]) -> list[str]:
@@ -189,25 +192,25 @@ def check_disjoint(g: RdfGraph, inferred: list[Triple]) -> list[str]:
       正常：Moutai 只有 ListedCompany/Company → []
       冲突：再断言 Moutai rdf:type Person → ["Moutai 同时是 ..."]
     """
-    # 显式 + 推出 = 推理器眼中的完整 ABox 类型视图
+    # 显式事实 ∪ 推出事实 = 推理器眼中的完整知识（至少类型相关部分）
     all_triples = set(g.triples) | set(inferred)
 
-    # 收集每个实体的全部类型
-    types: dict[str, set[str]] = {}
-    for s, p, o in all_triples:
-        if p == "rdf:type":
-            types.setdefault(s, set()).add(o)
+    types: dict[str, set[str]] = {}  # 映射：实体名 → 它拥有的类型集合
+    for s, p, o in all_triples:  # 扫描全部三元组
+        if p == "rdf:type":  # 只关心类型断言
+            types.setdefault(s, set()).add(o)  # 若实体首次出现则建空集合，再加入类型 o
 
-    # 取出互斥对，并补成对称（A⊥B ⇔ B⊥A）
+    # 取出所有「A 与 B 互斥」对
     disjoint_pairs = [(s, o) for s, p, o in all_triples if p == "owl:disjointWith"]
+    # 互斥对称：有 (A,B) 就补上 (B,A)，避免漏检
     pairs = set(disjoint_pairs) | {(b, a) for a, b in disjoint_pairs}
 
-    conflicts: list[str] = []
-    for entity, tset in types.items():
-        for a, b in pairs:
-            if a in tset and b in tset:
-                conflicts.append(f"{entity} 同时是 {a} 与 {b} → 不一致")
-    return conflicts
+    conflicts: list[str] = []  # 收集不一致描述
+    for entity, tset in types.items():  # 检查每一个实体的类型集合
+        for a, b in pairs:  # 对照每一对互斥类
+            if a in tset and b in tset:  # 若实体同时具有互斥的两类
+                conflicts.append(f"{entity} 同时是 {a} 与 {b} → 不一致")  # 记录冲突
+    return conflicts  # 空列表 = 一致；非空 = 发现矛盾
 
 
 def demo() -> None:
@@ -219,34 +222,34 @@ def demo() -> None:
       2. rdfs_type_closure     = Protégé 里 Inferred 多出来的类型
       3. check_disjoint        = 推理器报 inconsistent
     """
-    print("=" * 60)
-    print("RDF/OWL 学习脚本：三元组 + 子类推理 + 互斥校验")
-    print("=" * 60)
+    print("=" * 60)  # 打印分隔线，方便在终端里分段阅读
+    print("RDF/OWL 学习脚本：三元组 + 子类推理 + 互斥校验")  # 标题
+    print("=" * 60)  # 再打一条分隔线
 
-    g = load_securities_facts()
-    print("\n【显式三元组】")
-    for t in g.triples:
-        print(f"  {t[0]}  —{t[1]}→  {t[2]}")
+    g = load_securities_facts()  # 加载证券迷你本体的显式 TBox+ABox
+    print("\n【显式三元组】")  # 小节标题：尚未推理的原始断言
+    for t in g.triples:  # 遍历图中每一条显式三元组
+        print(f"  {t[0]}  —{t[1]}→  {t[2]}")  # 按「主语 —谓语→ 宾语」格式打印
 
-    inferred = rdfs_type_closure(g)
-    print("\n【RDFS 推出】（未写入、由公理得到）")
-    for t in inferred:
-        print(f"  {t[0]}  —{t[1]}→  {t[2]}   # Moutai 因 ListedCompany⊆Company")
+    inferred = rdfs_type_closure(g)  # 跑 RDFS 子类规则，得到新推出的类型
+    print("\n【RDFS 推出】（未写入、由公理得到）")  # 小节标题：推理结果
+    for t in inferred:  # 遍历每条推出的三元组
+        print(f"  {t[0]}  —{t[1]}→  {t[2]}   # Moutai 因 ListedCompany⊆Company")  # 打印并提示来源
 
-    print("\n【一致性】当前应无冲突")
-    print(" ", check_disjoint(g, inferred) or "OK")
+    print("\n【一致性】当前应无冲突")  # 此时茅台只有公司侧类型，应一致
+    print(" ", check_disjoint(g, inferred) or "OK")  # 有冲突打印列表，否则打印 OK
 
     # 故意制造冲突：再断言茅台是 Person（与 Company 互斥）
-    print("\n【冲突演示】再断言 Moutai rdf:type Person")
-    g.add("Moutai", "rdf:type", "Person")
-    inferred2 = rdfs_type_closure(g)
-    print(" ", check_disjoint(g, inferred2))
+    print("\n【冲突演示】再断言 Moutai rdf:type Person")  # 小节标题
+    g.add("Moutai", "rdf:type", "Person")  # 向 ABox 追加冲突断言
+    inferred2 = rdfs_type_closure(g)  # 重新推理（Person 断言本身通常不再推出 Company）
+    print(" ", check_disjoint(g, inferred2))  # 应打印「同时是 Person 与 Company」类冲突
 
-    print(
+    print(  # 收尾速记：三条学习主线
         "\n速记：Ontology 定语义 → RDF 落三元组 → OWL 公理交给推理器；"
         "完整 Turtle 见 docs/examples/securities-mini.ttl"
     )
 
 
-if __name__ == "__main__":
-    demo()
+if __name__ == "__main__":  # 仅当本文件被直接运行时为 True（被 import 时不执行）
+    demo()  # 启动完整演示流程

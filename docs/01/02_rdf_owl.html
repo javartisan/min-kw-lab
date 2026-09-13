@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上市公司—股票知识图谱：8 条 RDF 三元组逐行解读</title>
+<style>
+  html, body { margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; background: #eef1f5; color: #1f2937; }
+  .wrap { max-width: 920px; margin: 0 auto; box-sizing: border-box; padding: 24px 16px 28px; }
+  .card { background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; margin-top: 14px; }
+  .card-title { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+  .triple-line { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace; font-size: 14px; background: #f1f5f9; border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; word-break: break-all; }
+  .triple-item { border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+  .triple-item:last-child { margin-bottom: 0; }
+  .explain { font-size: 14px; color: #475569; line-height: 1.7; margin-top: 4px; }
+  .tag { display: inline-block; font-size: 14px; font-weight: 600; border-radius: 20px; padding: 2px 10px; margin-right: 6px; }
+  .tag-tbox { background: #dbeafe; color: #1e40af; }
+  .tag-abox { background: #fef3c7; color: #92400e; }
+  .box-label { display: inline-block; font-size: 14px; font-weight: 600; border-radius: 6px; padding: 3px 10px; margin-bottom: 10px; }
+  .mode-node { background: #ffffff; border: 1.5px solid #2563eb; border-radius: 10px; padding: 8px 14px; font-weight: 700; color: #1e3a8a; font-size: 14px; }
+  .data-node { background: #ffffff; border: 1.5px solid #d97706; border-radius: 10px; padding: 8px 12px; font-size: 14px; }
+  .edge { text-align: center; font-size: 14px; }
+  .edge-name { font-weight: 600; }
+  .edge-sub { color: #94a3b8; }
+  .infer-row { font-size: 14px; color: #334155; line-height: 1.8; }
+  .head { text-align: center; }
+  .head h1 { font-size: 20px; margin: 0 0 6px; color: #0f172a; }
+  .head p { font-size: 14px; color: #64748b; margin: 0; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 10px; font-size: 14px; color: #475569; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="head">
+    <h1>上市公司—股票知识图谱：8 条 RDF 三元组逐行解读</h1>
+    <p>第 1–4 条 = 模式层 TBox（规则） · 第 5–8 条 = 数据层 ABox（事实）</p>
+    <div class="legend">
+      <span><span class="dot" style="background:#2563eb;"></span>模式层：类、属性约束</span>
+      <span><span class="dot" style="background:#d97706;"></span>数据层：实例、事实</span>
+      <span><span class="dot" style="background:#dc2626;"></span>互斥约束</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">显式三元组总览</div>
+    <div class="triple-line">ListedCompany —rdfs:subClassOf→ Company</div>
+    <div class="triple-line">Person —owl:disjointWith→ Company</div>
+    <div class="triple-line">listedAs —rdfs:domain→ ListedCompany</div>
+    <div class="triple-line">listedAs —rdfs:range→ Stock</div>
+    <div class="triple-line">Moutai —rdf:type→ ListedCompany</div>
+    <div class="triple-line">Moutai —listedAs→ S600519</div>
+    <div class="triple-line">S600519 —rdf:type→ Stock</div>
+    <div class="triple-line">Moutai —rdfs:label→ 贵州茅台</div>
+  </div>
+
+  <div class="card" style="border-color:#93c5fd;background:#eff6ff;">
+    <div style="font-size:16px;font-weight:700;color:#1d4ed8;margin-bottom:12px;">模式层 · TBox（定义规则）</div>
+
+    <div class="triple-item" style="background:#ffffff;">
+      <div><span class="tag tag-tbox">① 子类</span></div>
+      <div class="triple-line">ListedCompany —rdfs:subClassOf→ Company</div>
+      <div class="explain"><b>子类声明</b>：上市公司是公司的一种，<code>ListedCompany</code> 的概念外延是 <code>Company</code> 的子集。推理效果：所有上市公司实例自动也是公司实例（类层级传递）。</div>
+    </div>
+
+    <div class="triple-item" style="background:#ffffff;">
+      <div><span class="tag tag-tbox">② 互斥</span></div>
+      <div class="triple-line">Person —owl:disjointWith→ Company</div>
+      <div class="explain"><b>互斥声明</b>：一个人不可能同时是公司，<code>Person ∩ Company = ∅</code>。若数据中出现某个体既是 Person 又是 Company，本体判定不一致。</div>
+    </div>
+
+    <div class="triple-item" style="background:#ffffff;">
+      <div><span class="tag tag-tbox">③ 定义域</span></div>
+      <div class="triple-line">listedAs —rdfs:domain→ ListedCompany</div>
+      <div class="explain"><b>定义域约束</b>：<code>listedAs</code> 的主语必须是 <code>ListedCompany</code>。RDFS 语义下它是"正向推断"：出现 <code>X listedAs Y</code> 即推出 <code>X rdf:type ListedCompany</code>（注意：它不是强制校验，是推导规则）。</div>
+    </div>
+
+    <div class="triple-item" style="background:#ffffff;">
+      <div><span class="tag tag-tbox">④ 值域</span></div>
+      <div class="triple-line">listedAs —rdfs:range→ Stock</div>
+      <div class="explain"><b>值域约束</b>：<code>listedAs</code> 的宾语必须是 <code>Stock</code>。同理，<code>X listedAs Y</code> ⇒ 推出 <code>Y rdf:type Stock</code>。</div>
+    </div>
+  </div>
+
+  <div class="card" style="border-color:#f59e0b;background:#fffbeb;">
+    <div style="font-size:16px;font-weight:700;color:#b45309;margin-bottom:12px;">数据层 · ABox（具体事实）</div>
+
+    <div class="triple-item" style="background:#ffffff;">
+      <div><span class="tag tag-abox">⑤ 实例类型</span></div>
+      <div class="triple-line">Moutai —rdf:type→ ListedCompany</div>
+      <div class="explain"><b>实例类型断言</b>：实体 <code>Moutai</code>（贵州茅台这家公司）是 <code>ListedCompany</code> 的实例；结合第 ① 条可推出它也是 <code>Company</code> 的实例。</div>
+    </div>
+
+    <div class="triple-item" style="background:#ffffff;">
+      <div><span class="tag tag-abox">⑥ 实例关系</span></div>
+      <div class="triple-line">Moutai —listedAs→ S600519</div>
+      <div class="explain"><b>实例关系断言</b>："茅台以 S600519 上市"，<code>S600519</code> 是股票这一<b>资源</b>（而非字符串"600519"）。结合第 ③④ 条，推理器自动补出 <code>Moutai type ListedCompany</code>、<code>S600519 type Stock</code>。</div>
+    </div>
+
+    <div class="triple-item" style="background:#ffffff;">
+      <div><span class="tag tag-abox">⑦ 实例类型</span></div>
+      <div class="triple-line">S600519 —rdf:type→ Stock</div>
+      <div class="explain"><code>S600519</code> 是 <code>Stock</code> 的实例——与第 ⑥ 条经 range 推出的结论一致（冗余但互相印证）。</div>
+    </div>
+
+    <div class="triple-item" style="background:#ffffff;">
+      <div><span class="tag tag-abox">⑧ 可读标签</span></div>
+      <div class="triple-line">Moutai —rdfs:label→ 贵州茅台</div>
+      <div class="explain">给资源 <code>Moutai</code> 一个人类可读的显示名，宾语是<b>字面量</b>（字符串）而非资源，所以它不参与关系推理。支持多语言，可添加多个 label。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">知识图谱关系图</div>
+
+    <div style="border:1.5px dashed #93c5fd;border-radius:12px;padding:12px;background:#eff6ff;margin-bottom:10px;">
+      <div style="font-size:14px;font-weight:600;color:#1d4ed8;margin-bottom:8px;">模式层 · TBox</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center;">
+        <div class="mode-node">Company</div>
+        <div class="edge">
+          <div class="edge-name" style="color:#1d4ed8;">subClassOf</div>
+          <div class="edge-sub">⊇ 包含</div>
+        </div>
+        <div class="mode-node">ListedCompany</div>
+        <div class="edge">
+          <div class="edge-name" style="color:#dc2626;">disjointWith</div>
+          <div class="edge-sub">互斥</div>
+        </div>
+        <div class="mode-node" style="border-style:dashed;border-color:#dc2626;color:#b91c1c;">Person</div>
+      </div>
+      <div style="margin-top:10px;background:#ffffff;border:1.5px solid #2563eb;border-radius:10px;padding:8px 12px;font-size:14px;color:#334155;">
+        <span style="font-weight:600;color:#1e3a8a;">属性约束 listedAs：</span>
+        domain（定义域）→ <b>ListedCompany</b>（主语类型） · range（值域）→ <b>Stock</b>（宾语类型）
+      </div>
+    </div>
+
+    <div style="border:1.5px dashed #f59e0b;border-radius:12px;padding:12px;background:#fffbeb;margin-bottom:10px;">
+      <div style="font-size:14px;font-weight:600;color:#b45309;margin-bottom:8px;">数据层 · ABox</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;font-size:13px;">
+        <div class="data-node">
+          <div style="font-weight:700;color:#92400e;">Moutai</div>
+          <div style="font-size:13px;color:#64748b;">label："贵州茅台"</div>
+        </div>
+        <div class="edge">
+          <div class="edge-name" style="color:#b45309;">rdf:type</div>
+          <div class="edge-sub">↓</div>
+        </div>
+        <div class="data-node" style="font-weight:700;color:#92400e;">ListedCompany</div>
+        <div class="edge">
+          <div class="edge-name" style="color:#b45309;">listedAs</div>
+          <div class="edge-sub">→</div>
+        </div>
+        <div class="data-node">
+          <div style="font-weight:700;color:#92400e;">S600519</div>
+          <div style="font-size:13px;color:#64748b;">（股票资源，非字符串）</div>
+        </div>
+        <div class="edge">
+          <div class="edge-name" style="color:#b45309;">rdf:type</div>
+          <div class="edge-sub">↓</div>
+        </div>
+        <div class="data-node" style="font-weight:700;color:#92400e;">Stock</div>
+      </div>
+    </div>
+
+    <div style="background:#ffffff;border:1.5px solid #e2e8f0;border-radius:12px;padding:10px 12px;">
+      <div style="font-size:14px;font-weight:600;color:#0f172a;margin-bottom:6px;">推理器自动补全（无需显式写出）</div>
+      <div class="infer-row">
+        <div>① Moutai <b>rdf:type Company</b> —— 由 subClassOf（①）＋ 类型断言（⑤）传递得出</div>
+        <div>② Moutai <b>rdf:type ListedCompany</b> —— 由 listedAs 的 domain（③）＋ 实例关系（⑥）推出</div>
+        <div>③ S600519 <b>rdf:type Stock</b> —— 由 listedAs 的 range（④）＋ 实例关系（⑥）推出</div>
+        <div>④ Moutai <b>不是 Person</b> —— 由 disjointWith（②）推出</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">三个要点</div>
+    <div class="explain">
+      <div>1. <b>rdfs:domain / rdfs:range 是"推理规则"而非"输入校验"</b>——它不拦数据，而是帮你补出类型（第 ⑥ 条一条数据就推出两个类型）。</div>
+      <div style="margin-top:6px;">2. <b>rdfs:label 的宾语是字面量</b>——不参与关系推理，只提供人类可读的显示名。</div>
+      <div style="margin-top:6px;">3. <b>owl:disjointWith 的作用是查矛盾</b>——一旦数据违反（某个体既是 Person 又是 Company），本体就报不一致。</div>
+      <div style="margin-top:6px;">这 8 条合起来就是"本体定义 ＋ 数据实例"的完整小样例：前 4 条定规则（模式层），后 4 条填事实（数据层），推理器负责把隐式知识显式化。</div>
+    </div>
+  </div>
+
+</div>
+<div class="triple-table-wrapper">
+    <style>
+        .triple-table-wrapper {
+            font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+            color: #333;
+            margin: 20px 0;
+        }
+        .triple-table-wrapper h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .triple-table-wrapper table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .triple-table-wrapper th,
+        .triple-table-wrapper td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+            vertical-align: top;
+        }
+        .triple-table-wrapper th {
+            background-color: #34495e;
+            color: #fff;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .triple-table-wrapper tr:nth-child(even) {
+            background-color: #f4f8fb;
+        }
+        .triple-table-wrapper tr:hover {
+            background-color: #eaf3fb;
+        }
+        .triple-table-wrapper code {
+            background-color: #eef1f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 0.92em;
+            color: #c0392b;
+            white-space: nowrap;
+        }
+        .triple-table-wrapper td.triple {
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 0.9em;
+            color: #2c3e50;
+            white-space: nowrap;
+        }
+        .triple-table-wrapper .arrow {
+            color: #2980b9;
+            font-weight: bold;
+        }
+    </style>
+
+    <h2>显式三元组谓词含义汇总表</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>谓词</th>
+                <th>含义</th>
+                <th>三元组</th>
+                <th>例子中的作用</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>rdfs:subClassOf</code></td>
+                <td>子类关系</td>
+                <td class="triple">ListedCompany <span class="arrow">—rdfs:subClassOf→</span> Company</td>
+                <td>上市公司是公司的一种</td>
+            </tr>
+            <tr>
+                <td><code>owl:disjointWith</code></td>
+                <td>类之间不相交</td>
+                <td class="triple">Person <span class="arrow">—owl:disjointWith→</span> Company</td>
+                <td>人和公司不能是同一个体</td>
+            </tr>
+            <tr>
+                <td><code>rdfs:domain</code></td>
+                <td>属性的主语类型限制</td>
+                <td class="triple">listedAs <span class="arrow">—rdfs:domain→</span> ListedCompany</td>
+                <td><code>listedAs</code> 的主语应是上市公司</td>
+            </tr>
+            <tr>
+                <td><code>rdfs:range</code></td>
+                <td>属性的宾语类型限制</td>
+                <td class="triple">listedAs <span class="arrow">—rdfs:range→</span> Stock</td>
+                <td><code>listedAs</code> 的宾语应是股票</td>
+            </tr>
+            <tr>
+                <td><code>rdf:type</code></td>
+                <td>实例属于某个类</td>
+                <td class="triple">Moutai <span class="arrow">—rdf:type→</span> ListedCompany</td>
+                <td>Moutai 是上市公司</td>
+            </tr>
+            <tr>
+                <td><code>rdf:type</code></td>
+                <td>实例属于某个类</td>
+                <td class="triple">S600519 <span class="arrow">—rdf:type→</span> Stock</td>
+                <td>S600519 是股票</td>
+            </tr>
+            <tr>
+                <td><code>listedAs</code></td>
+                <td>公司对应股票 / 上市为某股票</td>
+                <td class="triple">Moutai <span class="arrow">—listedAs→</span> S600519</td>
+                <td>Moutai 上市为 S600519</td>
+            </tr>
+            <tr>
+                <td><code>rdfs:label</code></td>
+                <td>人类可读标签</td>
+                <td class="triple">Moutai <span class="arrow">—rdfs:label→</span> 贵州茅台</td>
+                <td>Moutai 的标签是“贵州茅台”</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>
