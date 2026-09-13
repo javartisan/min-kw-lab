@@ -9,7 +9,9 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import List, Tuple
 
 
@@ -123,7 +125,56 @@ def demo() -> None:
     for t in g.triples:
         print(f"  ({t.head}) -[{t.relation} conf={t.confidence}]-> ({t.tail})")
 
+    # 工程可选：python 01_nlp_pipeline.py --neo4j
+    if "--neo4j" in sys.argv:
+        ingest_to_neo4j(g)
+
     print("\n速记：表示规定「能有哪些类与边」；获取负责「从文本把实例填进去」。")
+    print("落库演示：python src/02_知识获取/01_nlp_pipeline.py --neo4j")
+
+
+def ingest_to_neo4j(graph: ExtractedGraph) -> None:
+    """抽取结果 MERGE 进 Neo4j（真实入库链路）。"""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from common.neo4j_client import get_lab_tag, require_neo4j, run_cypher
+
+    label_map = {
+        "Company": "Company",
+        "Stock": "Stock",
+        "Industry": "Industry",
+        "Person": "Person",
+    }
+    with require_neo4j():
+        lab = get_lab_tag()
+        print("\n【入库 Neo4j】")
+        for e in graph.entities:
+            label = label_map.get(e.type, "Entity")
+            run_cypher(
+                f"""
+                MERGE (n:{label} {{name: $name, lab: $lab}})
+                SET n.entityType = $typ, n.source = 'nlp_pipeline'
+                """,
+                {"name": e.text, "lab": lab, "typ": e.type},
+                write=True,
+            )
+            print(f"  MERGE (:{label} {{name:{e.text!r}}})")
+        for t in graph.triples:
+            run_cypher(
+                f"""
+                MATCH (a {{name: $h, lab: $lab}})
+                MATCH (b {{name: $t, lab: $lab}})
+                MERGE (a)-[r:{t.relation} {{lab: $lab}}]->(b)
+                SET r.confidence = $conf, r.source = 'nlp_pipeline'
+                """,
+                {
+                    "h": t.head,
+                    "t": t.tail,
+                    "lab": lab,
+                    "conf": t.confidence,
+                },
+                write=True,
+            )
+            print(f"  MERGE ({t.head})-[:{t.relation}]->({t.tail})")
 
 
 if __name__ == "__main__":

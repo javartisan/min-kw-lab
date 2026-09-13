@@ -1,18 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-学习小点：图数据库（Graph Database）
-一句话：以「节点 + 边」原生存图，查询围绕遍历与模式匹配。
+学习小点：图数据库（属性图模型 + Neo4j 对照）
+一句话：以「节点 + 边」原生存图；真实工程用 Neo4j 持久化与多跳查询。
 
 对应笔记：docs/3-知识存储.html → 图数据库
-对比：关系库用 JOIN 算关联；图库把关联「存进去」。
+本脚本：先讲清内存属性图模型，再对同一问题跑 Neo4j Cypher（需手动启动库）。
 """
 
 from __future__ import annotations
 
+import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from common.neo4j_client import get_lab_tag, require_neo4j, run_cypher
+from common.seed_kg import ensure_seed_graph
 
 
 @dataclass
@@ -32,17 +39,12 @@ class Edge:
 
 
 class PropertyGraph:
-    """
-    属性图三要素：
-      1. 节点 Node：可有多个 Label
-      2. 关系 Relationship：有向、有 Type
-      3. 属性 Property：挂在点或边上
-    """
+    """内存属性图：帮助理解 Node / Rel / Property，不替代真实图库。"""
 
     def __init__(self) -> None:
         self.nodes: Dict[str, Node] = {}
         self.edges: Dict[str, Edge] = {}
-        self._out: Dict[str, List[str]] = defaultdict(list)  # node -> edge ids
+        self._out: Dict[str, List[str]] = defaultdict(list)
 
     def add_node(self, node_id: str, labels: List[str], **props: Any) -> Node:
         n = Node(node_id, labels, props)
@@ -50,8 +52,6 @@ class PropertyGraph:
         return n
 
     def add_edge(self, edge_id: str, typ: str, start: str, end: str, **props: Any) -> Edge:
-        if start not in self.nodes or end not in self.nodes:
-            raise KeyError("边的两端必须先存在")
         e = Edge(edge_id, typ, start, end, props)
         self.edges[edge_id] = e
         self._out[start].append(edge_id)
@@ -67,7 +67,6 @@ class PropertyGraph:
         return result
 
     def multi_hop(self, start: str, edge_type: str, max_depth: int) -> List[List[str]]:
-        """多跳遍历：模拟 Cypher 的 [:TYPE*1..N]。"""
         paths: List[List[str]] = []
 
         def dfs(cur: str, path: List[str], depth: int) -> None:
@@ -76,7 +75,7 @@ class PropertyGraph:
             if depth == max_depth:
                 return
             for e, nxt in self.neighbors(cur, edge_type):
-                if nxt.id in path:  # 简单防环
+                if nxt.id in path:
                     continue
                 path.append(nxt.id)
                 dfs(nxt.id, path, depth + 1)
@@ -93,7 +92,6 @@ def build_demo_graph() -> PropertyGraph:
     g.add_node("i1", ["Industry"], name="白酒")
     g.add_node("c2", ["Company"], name="五粮液")
     g.add_node("h1", ["Company"], name="茅台集团")
-
     g.add_edge("e1", "LISTED_AS", "c1", "s1")
     g.add_edge("e2", "BELONGS_TO", "c1", "i1")
     g.add_edge("e3", "BELONGS_TO", "c2", "i1")
@@ -102,25 +100,59 @@ def build_demo_graph() -> PropertyGraph:
     return g
 
 
-def demo() -> None:
-    print("=" * 60)
-    print("图数据库学习脚本：属性图 + 多跳")
-    print("=" * 60)
-
+def demo_in_memory() -> None:
+    print("\n── 内存属性图（理解模型）──")
     g = build_demo_graph()
     moutai = g.nodes["c1"]
-    print(f"\n【节点】{moutai.labels} {moutai.props}")
-
-    print("\n【一跳出边】")
+    print(f"节点: {moutai.labels} {moutai.props}")
+    print("一跳出边:")
     for e, n in g.neighbors("c1"):
-        print(f"  -[{e.type} {e.props}]-> {n.props or n.id} {n.labels}")
-
-    print("\n【多跳 CONTROLS*1..2 从茅台集团出发】")
+        print(f"  -[{e.type}]-> {n.props or n.id}")
+    print("多跳 CONTROLS 从茅台集团:")
     for path in g.multi_hop("h1", "CONTROLS", 2):
         names = [g.nodes[i].props.get("name", i) for i in path]
         print("  " + " → ".join(names))
 
-    print("\n选型口诀：多跳关联为主 → 优先图库；强 OWL 推理 → 考虑 RDF 库。")
+
+def demo_neo4j() -> None:
+    print("\n── Neo4j 对照（真实多跳）──")
+    lab = get_lab_tag()
+    with require_neo4j():
+        stats = ensure_seed_graph(reset=False)
+        print(f"种子: nodes={stats['nodes']} rels={stats['rels']}")
+
+        rows = run_cypher(
+            """
+            MATCH (c:Company {name: $name, lab: $lab})-[r]->(n {lab: $lab})
+            RETURN type(r) AS rel, labels(n) AS labels, n.name AS name
+            ORDER BY rel
+            """,
+            {"name": "贵州茅台", "lab": lab},
+        )
+        print("贵州茅台一跳出边:")
+        for row in rows:
+            print(f"  -[{row['rel']}]-> {row['name']} {row['labels']}")
+
+        paths = run_cypher(
+            """
+            MATCH path = (a:Company {name: $name, lab: $lab})
+                         -[:CONTROLS*1..2]->(b {lab: $lab})
+            RETURN [n IN nodes(path) | n.name] AS names
+            """,
+            {"name": "茅台集团", "lab": lab},
+        )
+        print("CONTROLS*1..2:")
+        for row in paths:
+            print("  " + " → ".join(row["names"]))
+
+
+def demo() -> None:
+    print("=" * 60)
+    print("图数据库：内存模型 + Neo4j 工程对照")
+    print("=" * 60)
+    demo_in_memory()
+    demo_neo4j()
+    print("\n选型：多跳关联为主 → 优先图库；本项目学习落点 = Neo4j。")
 
 
 if __name__ == "__main__":
