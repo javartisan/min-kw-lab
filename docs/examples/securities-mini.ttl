@@ -1,0 +1,46 @@
+# 证券领域迷你 OWL 本体（Turtle）
+# 用途：演示子类、互斥、函数属性 + 实例推理
+# 可用 Protégé 打开，启用 HermiT/Pellet 查看推理结果
+
+@prefix :     <http://example.org/sec#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+############################################################
+# 1) TBox（Terminological Box / 模式层）：类与公理
+#    「领域里有哪些概念、怎么连、有什么限制」
+############################################################
+
+:Company       a owl:Class .
+:ListedCompany a owl:Class ;
+               rdfs:subClassOf :Company .
+:Stock         a owl:Class .
+:Person        a owl:Class ;
+               owl:disjointWith :Company .
+
+############################################################
+# 2) TBox 续：关系（对象属性）的定义域 / 值域 / 函数性
+############################################################
+
+# 上市公司 —listedAs→ 股票；Functional = 一家公司最多 1 只主股票（简化）
+:listedAs a owl:ObjectProperty ,
+            owl:FunctionalProperty ;
+          rdfs:domain :ListedCompany ;
+          rdfs:range  :Stock .
+
+############################################################
+# 3) ABox（Assertional Box / 数据层）：实例与断言事实
+#    「具体是谁、实际连了什么」
+############################################################
+
+:Moutai a :ListedCompany ;
+        rdfs:label "贵州茅台"@zh ;
+        :listedAs :S600519 .
+
+:S600519 a :Stock ;
+         rdfs:label "600519" .
+
+# 推理器应推出：:Moutai rdf:type :Company
+# 若再断言 :Moutai a :Person → 本体不一致（与 Company 互斥）

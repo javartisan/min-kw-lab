@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>5、知识融合 · 证券知识图谱</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Sora:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html">知识图谱 KG</a>
+      <nav class="nav">
+          <a href="index.html">总览</a>
+          <a href="1-知识表示.html">1 表示</a>
+          <a href="2-知识获取.html">2 获取</a>
+          <a href="3-知识存储.html">3 存储</a>
+          <a href="4-知识推理.html">4 推理</a>
+          <a href="5-知识融合.html" class="active">5 融合</a>
+          <a href="6-知识问答.html">6 问答</a>
+          <a href="7-知识分析.html">7 分析</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <article class="article">
+      <h1>知识融合 · 精炼学习笔记</h1>
+<blockquote>
+<p>目标：快速抓住实体对齐 / 本体匹配 / 冲突消解的核心，能说清「多源知识怎么合成一张可信图谱」。</p>
+</blockquote>
+<hr>
+<h2>一句话总览</h2>
+<p><strong>知识融合</strong> = 把来自不同来源、不同模式的知识，合并成<strong>一致、少冗余、可追溯</strong>的一张（或一层）图谱。</p>
+<table>
+<thead>
+<tr>
+<th>要点</th>
+<th>本质</th>
+<th>解决什么问题</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>实体对齐</td>
+<td>判断「是不是同一个东西」并合并</td>
+<td><code>贵州茅台</code> vs <code>Kweichow Moutai</code> vs <code>600519.SH 发行人</code></td>
+</tr>
+<tr>
+<td>本体匹配</td>
+<td>判断「是不是同一个概念/关系」</td>
+<td>源 A 的 <code>Corp</code> = 源 B 的 <code>Company</code></td>
+</tr>
+<tr>
+<td>冲突消解</td>
+<td>多源说法打架时如何取舍</td>
+<td>董事长姓名不一致、持股比例不同</td>
+</tr>
+</tbody></table>
+<pre><code class="language-text">来源1 ──┐
+来源2 ──┼→ 对齐（实体/本体） → 消解冲突 → 统一图谱（带来源与置信度）
+来源3 ──┘
+</code></pre>
+<p>与上下游：</p>
+<pre><code class="language-text">多路知识获取 → 知识融合（去重、映射、仲裁） → 干净存储 → 可靠推理/应用
+</code></pre>
+<p>没有融合：图谱里出现大量「假不同」节点，推理与统计都会歪。</p>
+<hr>
+<h2>1. 实体对齐（Entity Alignment / Entity Resolution）</h2>
+<h3>核心定义</h3>
+<p>识别指向<strong>同一现实对象</strong>的不同实体记录，并建立等价链接或合并为一个节点。</p>
+<pre><code class="language-text">节点A: {name: &quot;贵州茅台&quot;, source: &quot;研报&quot;}
+节点B: {name: &quot;Kweichow Moutai Co.,Ltd.&quot;, source: &quot;英文公告&quot;}
+节点C: {code: &quot;600519&quot;, source: &quot;行情&quot;}
+       ↓ 对齐
+同一公司实体（可保留多 name/别名，或 MERGE 成一个）
+</code></pre>
+<p>也常叫：实体解析、Record Linkage、去重（Deduplication）——场景略有差别，核心都是「同指」。</p>
+<h3>为什么难</h3>
+<table>
+<thead>
+<tr>
+<th>难点</th>
+<th>证券例子</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>名称变体</td>
+<td>简称/全称/曾用名/英文名</td>
+</tr>
+<tr>
+<td>缺共同键</td>
+<td>一篇只有公司名，一篇只有代码</td>
+</tr>
+<tr>
+<td>同名异实</td>
+<td>不同主体重名（需靠代码、统一社会信用代码等消歧）</td>
+</tr>
+<tr>
+<td>粒度不同</td>
+<td>「茅台集团」vs「贵州茅台酒股份有限公司」</td>
+</tr>
+</tbody></table>
+<h3>对齐信号（由强到弱）</h3>
+<table>
+<thead>
+<tr>
+<th>信号</th>
+<th>强度</th>
+<th>例子</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>全局唯一 ID</td>
+<td>极强</td>
+<td>股票代码、统一社会信用代码、LEI</td>
+</tr>
+<tr>
+<td>多属性一致</td>
+<td>强</td>
+<td>名 + 注册地 + 代码</td>
+</tr>
+<tr>
+<td>字符串相似</td>
+<td>中</td>
+<td>编辑距离、拼音、别名词典</td>
+</tr>
+<tr>
+<td>结构相似</td>
+<td>中</td>
+<td>共同邻居、同一行业与竞品集合</td>
+</tr>
+<tr>
+<td>向量近邻</td>
+<td>中</td>
+<td>名称/描述 Embedding</td>
+</tr>
+<tr>
+<td>仅简称撞车</td>
+<td>弱</td>
+<td>必须再找硬证据</td>
+</tr>
+</tbody></table>
+<h3>工程两步</h3>
+<ol>
+<li><strong>判定</strong>：<code>(e1, e2)</code> 是否同一实体（规则 / 分类模型 / 人工）  </li>
+<li><strong>合并策略</strong>：<ul>
+<li><strong>软对齐</strong>：保留两节点，加 <code>SAME_AS</code> / <code>owl:sameAs</code> 边  </li>
+<li><strong>硬合并</strong>：<code>MERGE</code> 成一个节点，属性按规则汇总，边迁过去</li>
+</ul>
+</li>
+</ol>
+<pre><code class="language-cypher">// 软对齐示意
+MATCH (a:Company {name:$n1}), (b:Company {name:$n2})
+MERGE (a)-[:SAME_AS {method:&#39;code&#39;, conf:1.0}]-&gt;(b)
+</code></pre>
+<h3>本项目相关现状</h3>
+<p>当前用 <code>name + entityType</code> 做 <code>MERGE</code>，<strong>同名同类型会并成一个</strong>——这是最简对齐。</p>
+<p>尚未覆盖：中英名、曾用名、跨文档「茅台」与「贵州茅台酒股份有限公司」等。升级时可加<strong>别名词表 + 代码桥接</strong>。</p>
+<h3>速记</h3>
+<ul>
+<li>实体对齐回答：<strong>「多个提及是不是同一个现实对象」</strong></li>
+<li>口诀：<strong>先硬键（代码），再名字，最后向量；合并前保留来源</strong></li>
+</ul>
+<hr>
+<h2>2. 本体匹配（Ontology Matching / Schema Matching）</h2>
+<h3>核心定义</h3>
+<p>在不同本体或数据模式之间，建立<strong>概念/属性/关系的对应</strong>，使两边的数据能互相翻译。</p>
+<pre><code class="language-text">源系统A：Corp  --listedCode--&gt;  Ticker
+源系统B：Company --LISTED_AS--&gt; Stock
+              ↓ 本体匹配
+Corp ≡ Company
+Ticker ≡ Stock
+listedCode ≡ LISTED_AS
+</code></pre>
+<p>实体对齐解决「实例层同指」；本体匹配解决「模式层同义」。</p>
+<h3>匹配什么</h3>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>匹配对象</th>
+<th>例子</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>类</td>
+<td><code>Industry</code> ↔ <code>Sector</code></td>
+<td>是否同一类概念</td>
+</tr>
+<tr>
+<td>关系</td>
+<td><code>控股</code> ↔ <code>CONTROLS</code></td>
+<td>是否同一谓词（含方向）</td>
+</tr>
+<tr>
+<td>属性</td>
+<td><code>证券代码</code> ↔ <code>code</code></td>
+<td>是否同一数据字段</td>
+</tr>
+<tr>
+<td>约束</td>
+<td>基数、互斥是否兼容</td>
+<td>匹配后能否一起推理</td>
+</tr>
+</tbody></table>
+<h3>常用方法（由易到难）</h3>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>做法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>词典/同义词表</td>
+<td>人工维护「Corp=Company」</td>
+</tr>
+<tr>
+<td>名称相似</td>
+<td>字符串/翻译后相似度</td>
+</tr>
+<tr>
+<td>结构相似</td>
+<td>类的属性集合、在层次中的位置相近</td>
+</tr>
+<tr>
+<td>实例反馈</td>
+<td>两类实例大量对齐 ⇒ 类也可能对齐</td>
+</tr>
+<tr>
+<td>嵌入/LLM 辅助</td>
+<td>用描述文本向量或提示做候选，人工确认</td>
+</tr>
+</tbody></table>
+<h3>最小证券例子</h3>
+<table>
+<thead>
+<tr>
+<th>外部模式</th>
+<th>本仓库本体</th>
+<th>匹配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Org</code></td>
+<td><code>Company</code></td>
+<td>类等价（若仅指法人）</td>
+</tr>
+<tr>
+<td><code>Executive</code></td>
+<td><code>Person</code> + 关系 <code>HAS_EXECUTIVE</code></td>
+<td>类 + 关系共同表达</td>
+</tr>
+<tr>
+<td><code>belongs_industry</code></td>
+<td><code>BELONGS_TO</code></td>
+<td>关系等价</td>
+</tr>
+<tr>
+<td><code>sec_code</code></td>
+<td><code>Stock.name</code> / <code>code</code></td>
+<td>属性映射</td>
+</tr>
+</tbody></table>
+<p>匹配结果通常落成一张 <strong>Mapping 表</strong>（或 OWL <code>equivalentClass</code> / <code>equivalentProperty</code>），ETL 时按表转换再入库。</p>
+<h3>和「知识表示」的关系</h3>
+<ul>
+<li>两边都先有（或不完善的）Ontology/Schema  </li>
+<li>匹配质量上限受两边建模清晰度限制  </li>
+<li>匹配后才谈得上跨源推理与统一查询</li>
+</ul>
+<h3>速记</h3>
+<ul>
+<li>本体匹配回答：<strong>「你的词和我的词是不是一个意思」</strong></li>
+<li>口诀：<strong>先对齐类与关系名，再导数据；映射表要版本化</strong></li>
+</ul>
+<hr>
+<h2>3. 冲突消解（Conflict Resolution）</h2>
+<h3>核心定义</h3>
+<p>当多源对同一对象给出<strong>矛盾断言</strong>时，按策略选出可信结论，或保留多值并标注争议。</p>
+<pre><code class="language-text">源1：贵州茅台 董事长 = 丁雄军   (研报2023)
+源2：贵州茅台 董事长 = 某人X     (旧闻2018)
+         ↓ 冲突消解
+采纳：丁雄军；旧值归档为历史；记录证据与时间
+</code></pre>
+<p>冲突不只存在于属性值，也包括：</p>
+<ul>
+<li>关系有无（A 是否控股 B）  </li>
+<li>类型互斥（既是 Person 又是 Company——本体层也会报）  </li>
+<li>数值不一致（持股 10% vs 12%）</li>
+</ul>
+<h3>常见消解策略</h3>
+<table>
+<thead>
+<tr>
+<th>策略</th>
+<th>做法</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>来源优先级</td>
+<td>交易所公告 &gt; 研报 &gt; 自媒体</td>
+<td>权威等级清晰时</td>
+</tr>
+<tr>
+<td>时间最新</td>
+<td>取最新时间戳</td>
+<td>易变属性（高管、持股）</td>
+</tr>
+<tr>
+<td>多数投票</td>
+<td>多源一致则信</td>
+<td>冗余采集</td>
+</tr>
+<tr>
+<td>置信度加权</td>
+<td>按抽取模型分数加权</td>
+<td>NER/RE 流水线</td>
+</tr>
+<tr>
+<td>数值融合</td>
+<td>平均/中位数/区间</td>
+<td>估算类指标（慎用）</td>
+</tr>
+<tr>
+<td>人工裁决</td>
+<td>工单审核</td>
+<td>高风险结论</td>
+</tr>
+<tr>
+<td>保留冲突</td>
+<td>多值并存 + <code>contested</code> 标记</td>
+<td>暂不能判、需展示争议</td>
+</tr>
+</tbody></table>
+<h3>工程上建议始终记录的元数据</h3>
+<pre><code class="language-text">value / 关系
+  + source（哪篇文档、哪个系统）
+  + time（事实时间或采集时间）
+  + confidence
+  + method（抽取规则 / 人工）
+</code></pre>
+<p>没有元数据，冲突消解只能拍脑袋。</p>
+<h3>与推理的关系</h3>
+<ul>
+<li><strong>本体推理</strong>可发现逻辑冲突（互斥类）  </li>
+<li><strong>冲突消解</strong>处理多源事实冲突（谁说了算）  </li>
+<li>流程常是：对齐同一实体 → 汇总其多源断言 → 消解 → 再跑推理校验</li>
+</ul>
+<h3>本项目可演进点</h3>
+<p>当前多次上传会 <code>MERGE</code> 同名实体并 <code>SET</code> 属性，<strong>后写可能覆盖先写</strong>，且缺少来源级冲突记录。增强方向：</p>
+<ul>
+<li><code>MENTIONS</code> 已保留文档溯源（起点）  </li>
+<li>属性改为「来源事实表」或关系属性上挂 <code>source/time/conf</code>  </li>
+<li>对外查询时按优先级选出「当前真值」</li>
+</ul>
+<h3>速记</h3>
+<ul>
+<li>冲突消解回答：<strong>「多源打架时听谁的、怎么留痕迹」</strong></li>
+<li>口诀：<strong>权威 &gt; 时间 &gt; 置信度；关键字段可人工；永远可追溯</strong></li>
+</ul>
+<hr>
+<h2>融合流水线（串起来）</h2>
+<pre><code class="language-text">1. 本体匹配     ：把各源 Schema 映射到统一本体（本仓库 types.ts）
+2. 数据转换     ：字段/关系改名、类型归一
+3. 实体对齐     ：硬键（股票代码）→ 别名 → 相似度候选 → 审核
+4. 图合并       ：SAME_AS 或硬 MERGE，边迁移
+5. 冲突消解     ：按策略生成「当前视图」
+6. 质检/推理    ：互斥、必填、规则校验
+7. 发布         ：应用只读「已融合层」，原始层可另存
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>层级</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>原始层</td>
+<td>各源原样，尽量不改</td>
+</tr>
+<tr>
+<td>对齐层</td>
+<td><code>SAME_AS</code>、Mapping</td>
+</tr>
+<tr>
+<td>融合层</td>
+<td>对外服务的统一实体与真值</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>对照一张表（考试/面试够用）</h2>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>实体对齐</th>
+<th>本体匹配</th>
+<th>冲突消解</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>作用层</td>
+<td>实例</td>
+<td>模式/概念</td>
+<td>断言值/关系真伪</td>
+</tr>
+<tr>
+<td>核心问题</td>
+<td>是否同一对象</td>
+<td>是否同一语义</td>
+<td>听谁的</td>
+</tr>
+<tr>
+<td>典型输出</td>
+<td><code>SAME_AS</code> / 合并节点</td>
+<td>Mapping / <code>equivalent*</code></td>
+<td>真值 + 证据链</td>
+</tr>
+<tr>
+<td>强信号</td>
+<td>代码等 ID</td>
+<td>人工同义词 + 结构</td>
+<td>来源权威与时间</td>
+</tr>
+<tr>
+<td>本项目</td>
+<td>同名 MERGE（简版）</td>
+<td>统一自有本体</td>
+<td>基本后写覆盖，待增强</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>和本项目的映射</h2>
+<table>
+<thead>
+<tr>
+<th>概念</th>
+<th>落点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>统一本体</td>
+<td><code>backend/src/types.ts</code> 实体/关系枚举</td>
+</tr>
+<tr>
+<td>简版实体合并</td>
+<td><code>MERGE … {name, entityType}</code>（<code>kg.ts</code>）</td>
+</tr>
+<tr>
+<td>来源线索</td>
+<td><code>Document -MENTIONS-&gt; Entity</code></td>
+</tr>
+<tr>
+<td>跨源中英名/曾用名</td>
+<td>尚未做 → 可加 Alias 节点或属性数组</td>
+</tr>
+<tr>
+<td>冲突与真值视图</td>
+<td>尚未做 → 属性级 source/time/conf</td>
+</tr>
+</tbody></table>
+<p>证券融合最强杠杆：<strong>股票代码当桥</strong>——名称再乱，代码对齐后公司实体可迅速合并。</p>
+<hr>
+<h2>5 分钟自测</h2>
+<ol>
+<li>知识融合要解决的三类问题？和「知识获取」差别？  </li>
+<li>实体对齐最强信号是什么？软对齐与硬合并区别？  </li>
+<li>本体匹配对齐的是实例还是概念？给出一对证券映射例子。  </li>
+<li>列举三种冲突消解策略及适用场景。  </li>
+<li>为什么融合要保留来源与时间？</li>
+</ol>
+<p><strong>参考答案要点</strong>：<br>①同指、同义模式、矛盾仲裁；获取产事实，融合成一张可信网<br>②唯一 ID；SAME_AS vs 并成一点<br>③概念/关系；Corp≡Company 等<br>④权威源、最新时间、投票/人工<br>⑤否则无法审计、无法按时间回滚真值</p>
+<hr>
+<h2>建议学习顺序</h2>
+<ol>
+<li>承认多源必然有「同名异实 / 异名同实 / 打架」  </li>
+<li>先做 <strong>ID 桥接</strong>（股票代码）与 <strong>别名词表</strong>  </li>
+<li>固定统一本体，再写 <strong>Schema Mapping</strong>  </li>
+<li>设计属性级 <strong>source/time/conf</strong>，再谈消解策略  </li>
+<li>需要大规模自动对齐时，再上相似度/Embedding，并保留人工审核入口</li>
+</ol>
+
+      <nav class="pager"><a href="4-知识推理.html">← 4 推理</a><a href="6-知识问答.html">6 问答 →</a></nav>
+    </article>
+  </main>
+  <footer class="footer">
+    由 <code>md/build-site.mjs</code> 从 Markdown 生成 · 可直接静态部署 <code>md/site/</code>
+  </footer>
+</body>
+</html>

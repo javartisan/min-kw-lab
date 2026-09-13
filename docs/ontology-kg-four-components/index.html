@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知识图谱中的本体（Ontology）· 四个构件</title>
+<style>
+  html, body { margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; background: #eef1f5; }
+</style>
+</head>
+<body>
+<div style="width:100%;box-sizing:border-box;font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;background:#f6f8fb;padding:22px 16px 18px;border-radius:14px;color:#1f2937;">
+  <div style="text-align:center;">
+    <div style="font-size:18px;font-weight:700;color:#0f172a;">知识图谱中的本体（Ontology）· 四个构件</div>
+    <div style="font-size:14px;color:#64748b;margin-top:4px;">本体＝领域共享概念模型的显式说明，在知识图谱中承担「模式层」角色，约束数据层实例</div>
+  </div>
+
+  <div style="margin-top:18px;border:1.5px dashed #93c5fd;border-radius:12px;padding:16px 12px 12px;background:#eff6ff;">
+    <div style="font-size:14px;font-weight:600;color:#1d4ed8;margin-bottom:10px;">模式层 · TBox（本体定义的概念骨架）</div>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;">
+      <div style="flex:1 1 200px;min-width:200px;background:#ffffff;border:1.5px solid #2563eb;border-radius:10px;padding:10px 12px;">
+        <div style="font-weight:700;color:#1e3a8a;font-size:15px;">① 类 Class / 概念 Concept</div>
+        <div style="font-size:14px;color:#475569;margin:5px 0;">同类实体的抽象归纳，支持 is-a 层级</div>
+        <div style="font-size:13px;color:#1e40af;background:#dbeafe;border-radius:6px;padding:4px 8px;">例：人物 ⊃ 员工 ⊃ 工程师</div>
+      </div>
+      <div style="flex:1 1 200px;min-width:200px;background:#ffffff;border:1.5px solid #059669;border-radius:10px;padding:10px 12px;">
+        <div style="font-weight:700;color:#065f46;font-size:15px;">② 关系 Relation</div>
+        <div style="font-size:14px;color:#475569;margin:5px 0;">类与类、实例与实例之间的语义连接（动词）</div>
+        <div style="font-size:13px;color:#065f46;background:#d1fae5;border-radius:6px;padding:4px 8px;">例：任职于、位于、part-of、kind-of</div>
+      </div>
+      <div style="flex:1 1 200px;min-width:200px;background:#ffffff;border:1.5px solid #d97706;border-radius:10px;padding:10px 12px;">
+        <div style="font-weight:700;color:#92400e;font-size:15px;">③ 属性 Property</div>
+        <div style="font-size:14px;color:#475569;margin:5px 0;">类/实例的特征描述，分两类：</div>
+        <div style="font-size:13px;color:#92400e;background:#fef3c7;border-radius:6px;padding:4px 8px;">数据属性：姓名、年龄 · 对象属性：就职公司</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin:8px 0 6px;">
+    <div style="font-size:13px;color:#64748b;">实例化 instantiate —— 概念与规则落到具体数据</div>
+    <div style="width:2px;height:16px;background:#94a3b8;margin:4px auto 0;"></div>
+    <div style="width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:11px solid #94a3b8;margin:0 auto;"></div>
+  </div>
+
+  <div style="border:1.5px dashed #f59e0b;border-radius:12px;padding:16px 12px 12px;background:#fffbeb;">
+    <div style="font-size:14px;font-weight:600;color:#b45309;margin-bottom:10px;">数据层 · ABox（本体在数据中的落地）</div>
+    <div style="background:#ffffff;border:1.5px solid #d97706;border-radius:10px;padding:10px 12px;max-width:440px;margin:0 auto;">
+      <div style="font-weight:700;color:#92400e;font-size:15px;">④ 实例 Instance / Individual</div>
+      <div style="font-size:14px;color:#475569;margin:5px 0;">类的具体成员，是知识图谱中的实体节点</div>
+      <div style="font-size:13px;color:#92400e;background:#fef3c7;border-radius:6px;padding:4px 8px;">例：张三（"人物"类的实例）、字节跳动（"公司"类的实例）</div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px;background:#ffffff;border:1.5px solid #e2e8f0;border-radius:12px;padding:12px 14px;">
+    <div style="font-size:14px;font-weight:600;color:#0f172a;margin-bottom:8px;">四构件如何协同 —— 一个迷你知识图谱片段</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;font-size:14px;color:#334155;">
+      <span style="background:#dbeafe;border-radius:20px;padding:5px 12px;font-weight:600;color:#1e40af;">张三 <span style="font-weight:400;color:#64748b;">(人物类实例)</span></span>
+      <span style="color:#059669;font-weight:600;">—任职于→</span>
+      <span style="background:#d1fae5;border-radius:20px;padding:5px 12px;font-weight:600;color:#065f46;">字节跳动 <span style="font-weight:400;color:#64748b;">(公司类实例)</span></span>
+      <span style="color:#d97706;font-weight:600;">年龄 = 30</span>
+      <span style="background:#fef3c7;border-radius:20px;padding:5px 12px;font-weight:600;color:#92400e;">(数据属性)</span>
+    </div>
+    <div style="font-size:13px;color:#64748b;margin-top:8px;text-align:center;">类/关系/属性定义属于 <b>TBox（模式层）</b>；实例属于 <b>ABox（数据层）</b>——合起来构成完整知识库 KB。</div>
+  </div>
+</div>
+</body>
+</html>

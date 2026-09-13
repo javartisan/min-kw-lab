@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2、知识获取 · 证券知识图谱</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Sora:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html">知识图谱 KG</a>
+      <nav class="nav">
+          <a href="index.html">总览</a>
+          <a href="1-知识表示.html">1 表示</a>
+          <a href="2-知识获取.html" class="active">2 获取</a>
+          <a href="3-知识存储.html">3 存储</a>
+          <a href="4-知识推理.html">4 推理</a>
+          <a href="5-知识融合.html">5 融合</a>
+          <a href="6-知识问答.html">6 问答</a>
+          <a href="7-知识分析.html">7 分析</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <article class="article">
+      <h1>知识获取 · 精炼学习笔记</h1>
+<blockquote>
+<p>目标：快速抓住 NLP 抽取 / NER / RE / EE 的核心，能说清「从文本里怎么变成图谱里的点与边」。</p>
+</blockquote>
+<hr>
+<h2>一句话总览</h2>
+<p><strong>知识获取</strong> = 从非结构化/半结构化数据中，自动或半自动抽出<strong>实体、关系、事件</strong>，供知识图谱入库。</p>
+<table>
+<thead>
+<tr>
+<th>要点</th>
+<th>本质</th>
+<th>输出长什么样</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>NLP 抽取</td>
+<td>端到端流水线（读文 → 抽知识）</td>
+<td>一套可入库的三元组/子图</td>
+</tr>
+<tr>
+<td>NER</td>
+<td>找出并分类「专有名词」</td>
+<td><code>(贵州茅台, Company)</code></td>
+</tr>
+<tr>
+<td>RE</td>
+<td>判定实体之间的语义关系</td>
+<td><code>(贵州茅台, BELONGS_TO, 白酒)</code></td>
+</tr>
+<tr>
+<td>EE</td>
+<td>抽出「发生了什么事」的结构</td>
+<td><code>(事件类型, 论元角色…)</code></td>
+</tr>
+</tbody></table>
+<p>流水线关系：</p>
+<pre><code class="language-text">原文
+ → NLP 预处理（分句/清洗）
+ → NER（找实体）
+ → RE（连关系） / EE（抽事件）
+ → 对齐本体类型后写入图库（Neo4j 等）
+</code></pre>
+<p>与「知识表示」的分工：<strong>表示</strong>规定「能有哪些类与边」；<strong>获取</strong>负责「从文本里把实例填进去」。</p>
+<hr>
+<h2>1. NLP 抽取（总览）</h2>
+<h3>核心定义</h3>
+<p>用自然语言处理技术，把研报、公告、新闻等文本，转成结构化知识（实体 + 关系 ± 事件）。</p>
+<h3>典型流水线（工程视角）</h3>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>做什么</th>
+<th>证券例子</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>文档解析</td>
+<td>PDF/DOCX/HTML → 纯文本</td>
+<td>本仓库 <code>parser.extractTextFromFile</code></td>
+</tr>
+<tr>
+<td>预处理</td>
+<td>分句、去噪、编码统一</td>
+<td>换行归一、去掉页眉页脚</td>
+</tr>
+<tr>
+<td>实体层</td>
+<td>NER / 词典 / 正则</td>
+<td>公司名、股票代码 <code>600519</code></td>
+</tr>
+<tr>
+<td>关系层</td>
+<td>RE / 模板 / 依存</td>
+<td>「属于…行业」「董事长是…」</td>
+</tr>
+<tr>
+<td>事件层</td>
+<td>EE（可选）</td>
+<td>「定增事件」「并购事件」</td>
+</tr>
+<tr>
+<td>后处理</td>
+<td>去重、对齐本体、置信度过滤</td>
+<td><code>Company</code>/<code>LISTED_AS</code> 规范化</td>
+</tr>
+<tr>
+<td>入库</td>
+<td>MERGE 进图数据库</td>
+<td>本仓库 <code>ingestExtractedGraph</code></td>
+</tr>
+</tbody></table>
+<h3>三条技术路线（由易到难）</h3>
+<table>
+<thead>
+<tr>
+<th>路线</th>
+<th>做法</th>
+<th>优点</th>
+<th>缺点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>规则/词典</strong></td>
+<td>正则、模板、行业词表</td>
+<td>可控、可解释、冷启动快</td>
+<td>覆盖窄、维护成本高</td>
+</tr>
+<tr>
+<td><strong>传统 ML</strong></td>
+<td>CRF/SVM + 特征工程</td>
+<td>比纯规则泛化好</td>
+<td>标注成本、特征繁琐</td>
+</tr>
+<tr>
+<td><strong>深度学习 / LLM</strong></td>
+<td>BiLSTM-CRF、BERT、大模型提示</td>
+<td>泛化强、少规则</td>
+<td>贵、要评测与护栏</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>本仓库当前是 <strong>规则 + 词典</strong> 路线（见 <code>backend/src/services/parser.ts</code>），适合入门与可控演示；生产证券 KG 常 <strong>规则保底 + 模型提召回</strong>。</p>
+</blockquote>
+<h3>输入形态对照</h3>
+<table>
+<thead>
+<tr>
+<th>输入</th>
+<th>获取难度</th>
+<th>策略</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>结构化 JSON/CSV</td>
+<td>低</td>
+<td>直接映射本体字段</td>
+</tr>
+<tr>
+<td>半结构化表格/公告栏目</td>
+<td>中</td>
+<td>模板 + 字段对齐</td>
+</tr>
+<tr>
+<td>纯文本研报/新闻</td>
+<td>高</td>
+<td>NER + RE +（可选）EE</td>
+</tr>
+</tbody></table>
+<h3>速记</h3>
+<ul>
+<li>NLP 抽取回答：<strong>「文档进、子图出」</strong></li>
+<li>没有本体约束的抽取 → 类型混乱，后面融合/推理很痛</li>
+</ul>
+<hr>
+<h2>2. NER（Named Entity Recognition，命名实体识别）</h2>
+<h3>核心定义</h3>
+<p>在文本中定位实体的<strong>边界</strong>，并打上<strong>类型标签</strong>。</p>
+<pre><code class="language-text">输入：贵州茅台的股票代码是600519。
+输出：
+  [贵州茅台] Company
+  [600519]   Stock
+</code></pre>
+<h3>必须分清的两步</h3>
+<ol>
+<li><strong>识别（Detection）</strong>：从哪到哪是一个实体（span）</li>
+<li><strong>分类（Classification）</strong>：这个 span 属于哪一类（Company / Person / …）</li>
+</ol>
+<p>有的系统拆开做，有的端到端一次出「边界+类型」。</p>
+<h3>常见实体类型（通用 → 证券）</h3>
+<table>
+<thead>
+<tr>
+<th>通用 NER</th>
+<th>证券领域常扩展</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>人名 PER</td>
+<td>高管、实际控制人</td>
+</tr>
+<tr>
+<td>机构 ORG</td>
+<td>上市公司、券商、基金</td>
+</tr>
+<tr>
+<td>地点 LOC</td>
+<td>注册地、上市地（可选）</td>
+</tr>
+<tr>
+<td>—</td>
+<td><strong>股票代码、行业、产品、指标</strong></td>
+</tr>
+</tbody></table>
+<p>本体里的类（<code>Company</code>/<code>Stock</code>…）= NER 标签集的设计来源。</p>
+<h3>工程做法速览</h3>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>直觉</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>词典匹配</td>
+<td>词表命中即实体</td>
+<td>头部公司、标准行业名</td>
+</tr>
+<tr>
+<td>正则</td>
+<td><code>\b[036]\d{5}\b</code> 抓 A 股代码</td>
+<td>强格式字段</td>
+</tr>
+<tr>
+<td>序列标注</td>
+<td>BIO/BIOES + CRF/BERT</td>
+<td>开放文本、变体多</td>
+</tr>
+<tr>
+<td>LLM 抽取</td>
+<td>提示「列出公司与代码」</td>
+<td>快速试点、长尾</td>
+</tr>
+</tbody></table>
+<h3>最小例子（对应本项目）</h3>
+<p>文本：<code>贵州茅台属于白酒行业，股票代码是600519。</code></p>
+<table>
+<thead>
+<tr>
+<th>span</th>
+<th>类型</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>贵州茅台</td>
+<td>Company</td>
+</tr>
+<tr>
+<td>白酒</td>
+<td>Industry</td>
+</tr>
+<tr>
+<td>600519</td>
+<td>Stock</td>
+</tr>
+</tbody></table>
+<h3>评价指标（知道名字即可）</h3>
+<ul>
+<li><strong>精确率 P</strong>：抽出的里面有多少是对的  </li>
+<li><strong>召回率 R</strong>：该抽的里面抽到了多少  </li>
+<li><strong>F1</strong>：P 与 R 的调和</li>
+</ul>
+<p>证券场景常更在乎：<strong>代码/公司名别抽错</strong>（精确）与 <strong>别漏掉关键主体</strong>（召回）的平衡。</p>
+<h3>速记</h3>
+<ul>
+<li>NER 回答：<strong>「文中有哪些东西、各是什么类型」</strong></li>
+<li>NER 只产<strong>节点候选</strong>，还没告诉你节点之间怎么连</li>
+</ul>
+<hr>
+<h2>3. RE（Relation Extraction，关系抽取）</h2>
+<h3>核心定义</h3>
+<p>在已识别（或候选）实体之间，判定是否存在某种<strong>预定义关系</strong>，并给出方向。</p>
+<pre><code class="language-text">实体：贵州茅台(Company), 白酒(Industry), 600519(Stock)
+关系：
+  贵州茅台 —BELONGS_TO→ 白酒
+  贵州茅台 —LISTED_AS→ 600519
+</code></pre>
+<h3>和 NER 的衔接</h3>
+<pre><code class="language-text">NER 出点  →  RE 出边  →  构成三元组 (头实体, 关系, 尾实体)
+</code></pre>
+<p>没有可靠 NER，RE 往往「连错对象」；没有 RE，图谱只是一堆孤立点。</p>
+<h3>关系从哪来</h3>
+<p>关系类型应来自<strong>本体</strong>（知识表示阶段定好），例如本项目：</p>
+<p><code>LISTED_AS</code> / <code>BELONGS_TO</code> / <code>HAS_EXECUTIVE</code> / <code>CONTROLS</code> / <code>COMPETES_WITH</code> …</p>
+<h3>三条常见做法</h3>
+<table>
+<thead>
+<tr>
+<th>做法</th>
+<th>说明</th>
+<th>例子</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>模板/规则</strong></td>
+<td>匹配句式</td>
+<td><code>X属于Y行业</code> → <code>BELONGS_TO</code></td>
+</tr>
+<tr>
+<td><strong>依存句法</strong></td>
+<td>用主谓宾/定中结构找论元</td>
+<td>「茅台的董事长是丁雄军」</td>
+</tr>
+<tr>
+<td><strong>模型分类</strong></td>
+<td>给定实体对，判关系类型或无关系</td>
+<td>BERT 句对/实体标记分类</td>
+</tr>
+<tr>
+<td><strong>联合抽取</strong></td>
+<td>NER+RE 一起学</td>
+<td>减少流水线误差传递</td>
+</tr>
+</tbody></table>
+<h3>最小例子（句式 → 三元组）</h3>
+<table>
+<thead>
+<tr>
+<th>句子模式</th>
+<th>抽出关系</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>X的股票代码是C</code></td>
+<td><code>(X, LISTED_AS, C)</code></td>
+</tr>
+<tr>
+<td><code>X属于Y行业</code></td>
+<td><code>(X, BELONGS_TO, Y)</code></td>
+</tr>
+<tr>
+<td><code>X的董事长是P</code></td>
+<td><code>(X, HAS_EXECUTIVE, P)</code></td>
+</tr>
+<tr>
+<td><code>X与Y存在竞争</code></td>
+<td><code>(X, COMPETES_WITH, Y)</code></td>
+</tr>
+<tr>
+<td><code>X控股Y</code></td>
+<td><code>(X, CONTROLS, Y)</code></td>
+</tr>
+</tbody></table>
+<h3>难点（面试常问）</h3>
+<ol>
+<li><strong>实体对组合爆炸</strong>：一句话多个实体，要判「谁和谁有关」  </li>
+<li><strong>关系方向</strong>：控股是 A→B 还是 B→A  </li>
+<li><strong>隐式关系</strong>：句子没写「属于」，但上下文能推（更难）  </li>
+<li><strong>跨句关系</strong>：实体在第 1 句，关系线索在第 3 句</li>
+</ol>
+<h3>速记</h3>
+<ul>
+<li>RE 回答：<strong>「这些实体之间是什么边」</strong></li>
+<li>质量口诀：<strong>先准关系类型，再补覆盖率</strong>（错边进图谱比漏边更难洗）</li>
+</ul>
+<hr>
+<h2>4. EE（Event Extraction，事件抽取）</h2>
+<h3>核心定义</h3>
+<p>从文本中识别<strong>事件类型</strong>，并抽出事件的<strong>论元（参与角色）</strong>——谁、对谁、在何时、做了什么。</p>
+<pre><code class="language-text">句子：贵州茅台定增事件引发市场关注。
+事件类型：定增（Seasoned Equity Offering）
+论元示例：
+  主体公司 = 贵州茅台
+  （可选）时间 / 规模 / 用途 …
+</code></pre>
+<h3>和 RE 差在哪</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>RE</th>
+<th>EE</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>关注点</td>
+<td>实体—实体的静态/长期关系</td>
+<td>一次「发生」的结构化描述</td>
+</tr>
+<tr>
+<td>输出</td>
+<td>一条边/三元组</td>
+<td>事件节点 + 多条角色边</td>
+</tr>
+<tr>
+<td>例子</td>
+<td>茅台属于白酒</td>
+<td>茅台发起定增</td>
+</tr>
+</tbody></table>
+<p>可以同时存在：事件节点 <code>定增事件</code>，再用 <code>INVOLVES</code> 连到公司。</p>
+<h3>经典结构（ACE 风格直觉）</h3>
+<ol>
+<li><strong>触发词（Trigger）</strong>：标志事件发生的词，如「并购」「回购」「中标」  </li>
+<li><strong>事件类型（Type）</strong>：并购 / 定增 / 减持 / 违规处罚…  </li>
+<li><strong>论元角色（Argument Role）</strong>：主体、标的、金额、时间、交易所…</li>
+</ol>
+<pre><code class="language-text">[宁德时代] 宣布 [并购] [某电池材料公司]
+   主体         触发词        标的
+</code></pre>
+<h3>证券场景常见事件类型（举例）</h3>
+<ul>
+<li>股权：定增、减持、增持、回购、质押  </li>
+<li>资本运作：并购、重组、分拆上市  </li>
+<li>监管：处罚、问询、立案  </li>
+<li>经营：中标、签约、业绩预告（可按需纳入）</li>
+</ul>
+<h3>工程落地层次</h3>
+<table>
+<thead>
+<tr>
+<th>层次</th>
+<th>做法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>轻量</td>
+<td>正则/词典抓触发词 → 建 <code>Event</code> 节点（本仓库偏这一档）</td>
+</tr>
+<tr>
+<td>标准</td>
+<td>触发词检测 + 论元角色分类（序列标注/多头分类）</td>
+</tr>
+<tr>
+<td>增强</td>
+<td>文档级事件、事件关系（因果、时序）</td>
+</tr>
+</tbody></table>
+<h3>速记</h3>
+<ul>
+<li>EE 回答：<strong>「发生了什么事、有哪些角色参与」</strong></li>
+<li>图谱里常落成：<strong>Event 节点 + INVOLVES/时间属性</strong>，而不是硬塞进普通 RE</li>
+</ul>
+<hr>
+<h2>对照一张表（考试/面试够用）</h2>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>NLP 抽取</th>
+<th>NER</th>
+<th>RE</th>
+<th>EE</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>问题</td>
+<td>端到端如何生产知识</td>
+<td>有哪些实体</td>
+<td>实体间什么关系</td>
+<td>发生了什么事件</td>
+</tr>
+<tr>
+<td>主产物</td>
+<td>子图/三元组集</td>
+<td>类型化 span</td>
+<td>有向关系</td>
+<td>事件+论元</td>
+</tr>
+<tr>
+<td>依赖</td>
+<td>含 NER/RE/EE</td>
+<td>本体标签集</td>
+<td>先有实体</td>
+<td>触发词+角色模式</td>
+</tr>
+<tr>
+<td>本仓库对应</td>
+<td><code>parseDocumentToGraph</code></td>
+<td>词典+正则+模式</td>
+<td>句式规则</td>
+<td>含「…事件」的模式</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>和本项目的映射（把概念钉在代码上）</h2>
+<table>
+<thead>
+<tr>
+<th>概念</th>
+<th>落点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>NLP 抽取总入口</td>
+<td><code>backend/src/services/parser.ts</code> → <code>parseDocumentToGraph</code></td>
+</tr>
+<tr>
+<td>NER（规则版）</td>
+<td>公司/行业词典、<code>600519</code> 正则、公司名后缀模式</td>
+</tr>
+<tr>
+<td>RE（规则版）</td>
+<td><code>属于…行业</code>、<code>股票代码是</code>、<code>董事长是</code>、<code>控股</code>、<code>竞争</code>…</td>
+</tr>
+<tr>
+<td>EE（轻量版）</td>
+<td>匹配「定增/并购…事件」生成 <code>Event</code></td>
+</tr>
+<tr>
+<td>入库</td>
+<td><code>backend/src/services/kg.ts</code> → <code>ingestExtractedGraph</code></td>
+</tr>
+</tbody></table>
+<p>升级路径（仍保持精炼）：<strong>规则保底 → 加领域 NER 模型 → 再加 RE/EE 模型或 LLM 抽取 → 人工校验闭环</strong>。</p>
+<hr>
+<h2>5 分钟自测</h2>
+<ol>
+<li>知识获取与知识表示各负责什么？  </li>
+<li>NER 的两步是什么？为什么说它只产「点」？  </li>
+<li>RE 的标准输出形式是什么？关系类型应从哪里来？  </li>
+<li>EE 与 RE 的核心差别？触发词是什么？  </li>
+<li>规则抽取与模型抽取如何分工最稳妥？</li>
+</ol>
+<p><strong>参考答案要点</strong>：<br>①表示定模式，获取填实例<br>②定边界+分类；尚未连边<br>③<code>(头, 关系, 尾)</code>；来自本体<br>④EE 描述一次发生及论元；触发词标志事件<br>⑤规则保底与可解释，模型提召回，关键边人工/校验</p>
+<hr>
+<h2>建议学习顺序</h2>
+<ol>
+<li>先固定领域 <strong>实体类型 + 关系类型</strong>（回看知识表示/本体）  </li>
+<li>用手写 10 条句子，标出 NER/RE 期望结果（建立语感）  </li>
+<li>实现或读懂一条 <strong>规则流水线</strong>（本仓库已具备）  </li>
+<li>再学序列标注 NER、句子级 RE  </li>
+<li>有公告/资讯场景时再深入 <strong>EE 论元角色</strong></li>
+</ol>
+
+      <nav class="pager"><a href="1-知识表示.html">← 1 表示</a><a href="3-知识存储.html">3 存储 →</a></nav>
+    </article>
+  </main>
+  <footer class="footer">
+    由 <code>md/build-site.mjs</code> 从 Markdown 生成 · 可直接静态部署 <code>md/site/</code>
+  </footer>
+</body>
+</html>

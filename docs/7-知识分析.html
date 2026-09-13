@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>7、知识分析 · 证券知识图谱</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Sora:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html">知识图谱 KG</a>
+      <nav class="nav">
+          <a href="index.html">总览</a>
+          <a href="1-知识表示.html">1 表示</a>
+          <a href="2-知识获取.html">2 获取</a>
+          <a href="3-知识存储.html">3 存储</a>
+          <a href="4-知识推理.html">4 推理</a>
+          <a href="5-知识融合.html">5 融合</a>
+          <a href="6-知识问答.html">6 问答</a>
+          <a href="7-知识分析.html" class="active">7 分析</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <article class="article">
+      <h1>知识分析 · 精炼学习笔记</h1>
+<blockquote>
+<p>目标：快速抓住图分析 / 指标洞察 / 可视化分析的核心，能说清「图谱不止能查，还能挖结构和趋势」。</p>
+</blockquote>
+<hr>
+<h2>一句话总览</h2>
+<p><strong>知识分析</strong> = 在知识图谱上做<strong>统计、结构挖掘与业务洞察</strong>，把「关联数据」变成「可决策结论」。</p>
+<table>
+<thead>
+<tr>
+<th>要点</th>
+<th>本质</th>
+<th>输出</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>图分析</td>
+<td>中心性、路径、社区、相似性</td>
+<td>关键节点、团伙、桥接人</td>
+</tr>
+<tr>
+<td>指标洞察</td>
+<td>基于图的业务 KPI / OLAP</td>
+<td>行业分布、关系密度、事件统计</td>
+</tr>
+<tr>
+<td>可视化分析</td>
+<td>交互探索与叙事展示</td>
+<td>子图、下钻、报告视图</td>
+</tr>
+</tbody></table>
+<pre><code class="language-text">干净图谱（存储+融合）
+  → 图算法 / 聚合查询
+  → 指标与结构发现
+  → 可视化 / 报告 / 风控策略
+</code></pre>
+<p>与<strong>问答</strong>的差别：问答偏「一问一答」；分析偏「批量挖掘、指标监控、探索式发现」。</p>
+<p>在七大方向中的位置：建图与对齐之后的<strong>增值层</strong>；常与问答共用同一张图。</p>
+<hr>
+<h2>1. 图分析（Graph Analytics）</h2>
+<h3>核心定义</h3>
+<p>利用图的拓扑结构做计算：谁重要、谁成团、两点如何连通、结构是否异常。</p>
+<h3>必知几类算法（直觉级）</h3>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>问什么</th>
+<th>证券直觉</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>中心性</strong></td>
+<td>谁是枢纽？</td>
+<td>关联公司最多、处在控股网核心的主体</td>
+</tr>
+<tr>
+<td><strong>路径</strong></td>
+<td>A 到 B 怎么连？</td>
+<td>股权穿透、关联交易路径</td>
+</tr>
+<tr>
+<td><strong>社区发现</strong></td>
+<td>谁经常抱团？</td>
+<td>产业链集群、隐式关联集团</td>
+</tr>
+<tr>
+<td><strong>相似度</strong></td>
+<td>谁和谁结构像？</td>
+<td>竞品候选、对标公司</td>
+</tr>
+<tr>
+<td><strong>异常/环</strong></td>
+<td>有无奇怪回路？</td>
+<td>异常持股环、数据质量问题</td>
+</tr>
+</tbody></table>
+<h3>最小 Cypher 分析例子</h3>
+<pre><code class="language-cypher">// 一度关联最多的公司（简易「度中心性」）
+MATCH (c:Company)-[r]-(n)
+WHERE c.entityType = &#39;Company&#39;
+RETURN c.name AS company, count(r) AS degree
+ORDER BY degree DESC
+LIMIT 10
+</code></pre>
+<pre><code class="language-cypher">// 两公司之间是否存在竞争或共同行业
+MATCH (a:Company {name:$a}), (b:Company {name:$b})
+OPTIONAL MATCH (a)-[:COMPETES_WITH]-(b)
+OPTIONAL MATCH (a)-[:BELONGS_TO]-&gt;(i:Industry)&lt;-[:BELONGS_TO]-(b)
+RETURN a.name, b.name,
+       exists((a)-[:COMPETES_WITH]-(b)) AS competes,
+       collect(DISTINCT i.name) AS sharedIndustries
+</code></pre>
+<pre><code class="language-cypher">// 股权穿透示意（深度 1..3）
+MATCH path = (a:Company {name:$name})-[:CONTROLS|HOLDS_SHARE*1..3]-&gt;(b)
+RETURN path
+LIMIT 50
+</code></pre>
+<blockquote>
+<p>Neo4j GDS（Graph Data Science）库提供 PageRank、Louvain 等；入门先用 Cypher 聚合与路径即可。</p>
+</blockquote>
+<h3>分析结果如何回写</h3>
+<p>常见做法：把分数写成节点属性（<code>pagerank</code>、<code>communityId</code>），供问答与前端过滤——<strong>分析产出也可变成图谱知识</strong>。</p>
+<h3>速记</h3>
+<ul>
+<li>图分析回答：<strong>「结构上谁重要、谁一伙、怎么连」</strong></li>
+<li>先路径与度数，再上专业图算法库</li>
+</ul>
+<hr>
+<h2>2. 指标洞察（Metrics / OLAP on KG）</h2>
+<h3>核心定义</h3>
+<p>把业务问题定义成<strong>可计算指标</strong>，在图谱上聚合、切片、对比与监控。</p>
+<h3>证券 KG 常见指标</h3>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>计算直觉</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>实体规模</td>
+<td>公司/股票/事件数量（本项目 <code>getStats</code>）</td>
+</tr>
+<tr>
+<td>关系密度</td>
+<td>边数 / 可能边数；平均度数</td>
+</tr>
+<tr>
+<td>行业覆盖</td>
+<td>各 <code>Industry</code> 下公司数分布</td>
+</tr>
+<tr>
+<td>文档贡献</td>
+<td>每篇 <code>Document</code> 的 <code>MENTIONS</code> 数</td>
+</tr>
+<tr>
+<td>事件热度</td>
+<td>近一段 <code>Event</code> 数量与涉及公司</td>
+</tr>
+<tr>
+<td>图谱完整度</td>
+<td>有代码但无行业、有公司无高管的比例（质量）</td>
+</tr>
+</tbody></table>
+<h3>与传统数仓的关系</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>数仓/宽表</th>
+<th>图谱指标</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>擅长</td>
+<td>固定报表、强 SQL 聚合</td>
+<td>多跳关联后再聚合</td>
+</tr>
+<tr>
+<td>互补</td>
+<td>金额、行情时间序列</td>
+<td>股权链、关联方、事件网络</td>
+</tr>
+</tbody></table>
+<p>实务：<strong>行情与财务进数仓，关系与事件进图谱</strong>，分析层可JOIN两者。</p>
+<h3>本项目已有萌芽</h3>
+<p><code>GET /api/stats</code> → <code>entities / relations / documents / byType</code><br>这是最简「指标洞察」。可演进为：按行业分布、按关系类型直方图、质量缺口清单。</p>
+<h3>速记</h3>
+<ul>
+<li>指标洞察回答：<strong>「用数字概括图谱健康度与业务结构」</strong></li>
+<li>好指标 = <strong>可复算 + 可下钻到子图证据</strong></li>
+</ul>
+<hr>
+<h2>3. 可视化分析（Visual Analytics）</h2>
+<h3>核心定义</h3>
+<p>通过交互可视化支持人<strong>探索、验证、讲述</strong>图谱结论；不是「把图画画好看」而已，而是分析闭环的一部分。</p>
+<h3>常用视图</h3>
+<table>
+<thead>
+<tr>
+<th>视图</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>力导向全图/子图</td>
+<td>发现团块与桥接</td>
+</tr>
+<tr>
+<td>以实体为中心的邻域</td>
+<td>公司画像（一度/二度）</td>
+</tr>
+<tr>
+<td>路径高亮</td>
+<td>解释「如何关联」</td>
+</tr>
+<tr>
+<td>时间线 + 事件</td>
+<td>定增/并购叙事</td>
+</tr>
+<tr>
+<td>矩阵/桑基</td>
+<td>行业—公司、持股流向（进阶）</td>
+</tr>
+</tbody></table>
+<h3>分析交互闭环</h3>
+<pre><code class="language-text">看概览指标 → 点进异常行业/高度数节点
+  → 展开邻域 → 发现可疑路径
+  → 固化为结论/规则/问答模板
+</code></pre>
+<h3>本项目对应</h3>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th>落点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>力导向图</td>
+<td><code>frontend/src/GraphCanvas.tsx</code></td>
+</tr>
+<tr>
+<td>检索过滤</td>
+<td>前端关键词 → <code>/api/graph?q=</code></td>
+</tr>
+<tr>
+<td>节点详情</td>
+<td>选中节点展示属性</td>
+</tr>
+<tr>
+<td>待增强</td>
+<td>社区着色、路径查询 UI、指标仪表盘</td>
+</tr>
+</tbody></table>
+<h3>速记</h3>
+<ul>
+<li>可视化分析回答：<strong>「让人眼完成算法不好定义的发现」</strong></li>
+<li>原则：<strong>概览先、下钻后、结论可回到查询复现</strong></li>
+</ul>
+<hr>
+<h2>问答 vs 分析（对照）</h2>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>知识问答</th>
+<th>知识分析</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>触发</td>
+<td>一个自然语言问题</td>
+<td>批量任务 / 探索 / 定时报表</td>
+</tr>
+<tr>
+<td>输出</td>
+<td>答案 + 证据</td>
+<td>指标、排名、社区、报告</td>
+</tr>
+<tr>
+<td>用户</td>
+<td>业务问询者</td>
+<td>分析师 / 风控 / 数据同学</td>
+</tr>
+<tr>
+<td>技术重心</td>
+<td>语义解析、KBQA、GraphRAG</td>
+<td>图算法、聚合、可视化</td>
+</tr>
+</tbody></table>
+<p>二者常联动：分析发现「高度数关联方」→ 沉淀为问答模板「谁是关联最多的公司」。</p>
+<hr>
+<h2>对照一张表（考试/面试够用）</h2>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>图分析</th>
+<th>指标洞察</th>
+<th>可视化分析</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>核心</td>
+<td>拓扑算法与路径</td>
+<td>KPI/质量/分布</td>
+<td>人机探索</td>
+</tr>
+<tr>
+<td>产物</td>
+<td>分数、社区、路径</td>
+<td>报表数字</td>
+<td>可交互视图</td>
+</tr>
+<tr>
+<td>工具</td>
+<td>Cypher、GDS</td>
+<td>Cypher 聚合、BI</td>
+<td>力导向、下钻 UI</td>
+</tr>
+<tr>
+<td>本项目</td>
+<td>可用 Cypher 扩展</td>
+<td><code>getStats</code></td>
+<td>前端图谱画布</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>和本项目的映射</h2>
+<table>
+<thead>
+<tr>
+<th>概念</th>
+<th>落点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>基础统计</td>
+<td><code>getStats</code> / 前端数字条</td>
+</tr>
+<tr>
+<td>结构探索</td>
+<td><code>GraphCanvas</code> + search</td>
+</tr>
+<tr>
+<td>路径/中心性</td>
+<td>待加 API（Cypher 或 GDS）</td>
+</tr>
+<tr>
+<td>质量分析</td>
+<td>可查「无行业的 Company」等缺口</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>5 分钟自测</h2>
+<ol>
+<li>知识分析与知识问答的主要差别？  </li>
+<li>度中心性在证券图谱上能说明什么？  </li>
+<li>为何指标要能下钻到子图？  </li>
+<li>可视化分析的闭环四步？  </li>
+<li>本项目已具备哪类「分析」雏形？</li>
+</ol>
+<p><strong>参考答案要点</strong>：<br>①问答一问一答；分析批量/结构/指标<br>②识别枢纽公司或关联密集主体<br>③否则数字不可审计<br>④概览→下钻→发现→固化<br>⑤stats + 力导向探索</p>
+<hr>
+<h2>建议学习顺序</h2>
+<ol>
+<li>用 Cypher 写清：<strong>规模、分布、度数 TopN、简单路径</strong>  </li>
+<li>把结果画到现有前端或 Browser  </li>
+<li>定义 5 个证券业务指标（含质量缺口）  </li>
+<li>需要社区/PageRank 时再引入 <strong>GDS</strong>  </li>
+<li>与问答打通：高频分析结论 → 问答模板</li>
+</ol>
+
+      <nav class="pager"><a href="6-知识问答.html">← 6 问答</a><span></span></nav>
+    </article>
+  </main>
+  <footer class="footer">
+    由 <code>md/build-site.mjs</code> 从 Markdown 生成 · 可直接静态部署 <code>md/site/</code>
+  </footer>
+</body>
+</html>

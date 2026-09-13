@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3、知识存储 · 证券知识图谱</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Sora:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html">知识图谱 KG</a>
+      <nav class="nav">
+          <a href="index.html">总览</a>
+          <a href="1-知识表示.html">1 表示</a>
+          <a href="2-知识获取.html">2 获取</a>
+          <a href="3-知识存储.html" class="active">3 存储</a>
+          <a href="4-知识推理.html">4 推理</a>
+          <a href="5-知识融合.html">5 融合</a>
+          <a href="6-知识问答.html">6 问答</a>
+          <a href="7-知识分析.html">7 分析</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <article class="article">
+      <h1>知识存储 · 精炼学习笔记</h1>
+<blockquote>
+<p>目标：快速抓住图数据库 / Neo4j / RDF 存储的核心，能说清「知识存在哪、怎么查、和表示层如何对应」。</p>
+</blockquote>
+<hr>
+<h2>一句话总览</h2>
+<p><strong>知识存储</strong> = 把已获取的实体与关系<strong>持久化</strong>，并提供高效<strong>查询 / 遍历 / 更新</strong>能力。</p>
+<table>
+<thead>
+<tr>
+<th>要点</th>
+<th>本质</th>
+<th>强项</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>图数据库</td>
+<td>用「节点 + 边」原生存图</td>
+<td>多跳关联、路径查询</td>
+</tr>
+<tr>
+<td>Neo4j</td>
+<td>主流<strong>属性图</strong>引擎（Bolt + Cypher）</td>
+<td>工程成熟、生态好、本项目在用</td>
+</tr>
+<tr>
+<td>RDF 存储</td>
+<td>用<strong>三元组</strong>存语义网数据</td>
+<td>标准互操作、配合 OWL 推理</td>
+</tr>
+</tbody></table>
+<p>与上下游关系：</p>
+<pre><code class="language-text">知识表示（定模式） → 知识获取（产实例） → 知识存储（落盘可查） → 推理 / 应用
+</code></pre>
+<p>选型口诀：<strong>业务应用与多跳查询优先属性图（Neo4j）；强语义互操作与 OWL 推理优先 RDF 库</strong>（也可并存）。</p>
+<hr>
+<h2>1. 图数据库（Graph Database）</h2>
+<h3>核心定义</h3>
+<p>以<strong>图数据模型</strong>为第一公民的数据库：数据就是节点（Vertex）与边（Edge/Relationship），查询围绕遍历与模式匹配展开。</p>
+<h3>为什么 KG 爱用图库</h3>
+<table>
+<thead>
+<tr>
+<th>对比</th>
+<th>关系库（表）</th>
+<th>图数据库</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>关联表达</td>
+<td>外键 / JOIN</td>
+<td>边一等公民</td>
+</tr>
+<tr>
+<td>多跳查询</td>
+<td>JOIN 爆炸、难写</td>
+<td>沿边走 N 跳自然</td>
+</tr>
+<tr>
+<td>Schema</td>
+<td>表结构较刚性</td>
+<td>标签/属性更灵活（仍建议有约定）</td>
+</tr>
+<tr>
+<td>典型问题</td>
+<td>「谁控股谁的子公司的…」要多层 JOIN</td>
+<td><code>MATCH (a)-[:CONTROLS*1..3]-&gt;(b)</code></td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>知识图谱的本质是<strong>关联</strong>；图库把关联从「计算出来的」变成「存进去的」。</p>
+</blockquote>
+<h3>两种主流图模型</h3>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>基本单位</th>
+<th>代表</th>
+<th>适合</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>属性图（Labeled Property Graph）</strong></td>
+<td>带标签的节点 + 带类型的边，均可挂属性</td>
+<td>Neo4j、JanusGraph（属性图模式）</td>
+<td>业务系统、OLTP 图查询</td>
+</tr>
+<tr>
+<td><strong>RDF 图</strong></td>
+<td><code>(s, p, o)</code> 三元组，资源用 IRI</td>
+<td>GraphDB、Jena TDB、Virtuoso</td>
+<td>语义网、开放数据、OWL</td>
+</tr>
+</tbody></table>
+<p>本仓库采用 <strong>属性图（Neo4j）</strong>。</p>
+<h3>属性图三要素（务必熟）</h3>
+<ol>
+<li><strong>节点 Node</strong>：实体，可有多个 <strong>Label</strong>（如 <code>:Company</code>）</li>
+<li><strong>关系 Relationship</strong>：有向边，有 <strong>Type</strong>（如 <code>BELONGS_TO</code>），通常不能没有起点/终点</li>
+<li><strong>属性 Property</strong>：节点或边上的键值（<code>name</code>、<code>code</code>、<code>ratio</code>…）</li>
+</ol>
+<pre><code class="language-text">(贵州茅台:Company {name:&quot;贵州茅台&quot;})
+    -[:LISTED_AS]-&gt;
+(600519:Stock {code:&quot;600519&quot;})
+</code></pre>
+<h3>图库核心能力速记</h3>
+<ul>
+<li><strong>模式匹配</strong>：找符合形态的子图  </li>
+<li><strong>路径/多跳</strong>：控股链、竞品二度关系  </li>
+<li><strong>聚合统计</strong>：某行业下公司数、某文档提及实体数  </li>
+<li><strong>约束与索引</strong>：唯一性、查得快</li>
+</ul>
+<h3>速记</h3>
+<ul>
+<li>图数据库回答：<strong>「点边怎么存、关联怎么查」</strong></li>
+<li>选型先问：查询是否以<strong>多跳关系</strong>为主？是 → 优先图库</li>
+</ul>
+<hr>
+<h2>2. Neo4j</h2>
+<h3>核心定义</h3>
+<p>Neo4j 是基于<strong>属性图</strong>的图数据库；应用通过 <strong>Bolt</strong> 协议连接，用 <strong>Cypher</strong> 声明式查询语言读写。</p>
+<h3>工程三件套</h3>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>作用</th>
+<th>本项目对应</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Neo4j Server</td>
+<td>存数据、执行 Cypher</td>
+<td>Docker / 本地实例，<code>7687</code> Bolt，<code>7474</code> Browser</td>
+</tr>
+<tr>
+<td>Bolt Driver</td>
+<td>应用连接池与会话</td>
+<td><code>neo4j-driver</code>，<code>backend/src/db.ts</code></td>
+</tr>
+<tr>
+<td>Cypher</td>
+<td>增删改查与图模式</td>
+<td><code>backend/src/services/kg.ts</code></td>
+</tr>
+</tbody></table>
+<p>连接直觉：</p>
+<pre><code class="language-text">App  --Bolt--&gt;  Neo4j
+       URI: bolt://localhost:7687
+</code></pre>
+<h3>Cypher 最小必备</h3>
+<pre><code class="language-cypher">-- 创建/合并节点（有则复用，无则创建）
+MERGE (c:Entity:Company {name: $name, entityType: &#39;Company&#39;})
+ON CREATE SET c.id = $id, c.createdAt = datetime()
+
+-- 创建关系
+MATCH (a:Entity {name: $from}), (b:Entity {name: $to})
+MERGE (a)-[r:BELONGS_TO]-&gt;(b)
+
+-- 查询子图
+MATCH (n:Entity)-[r]-&gt;(m:Entity)
+WHERE n.name CONTAINS $keyword
+RETURN n, r, m
+
+-- 多跳（示例：最多 3 层控股）
+MATCH path = (a:Company)-[:CONTROLS*1..3]-&gt;(b)
+RETURN path
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>关键词</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>MATCH</code></td>
+<td>匹配已有模式</td>
+</tr>
+<tr>
+<td><code>MERGE</code></td>
+<td>匹配不到就创建（幂等入库常用）</td>
+</tr>
+<tr>
+<td><code>CREATE</code></td>
+<td>直接创建（易重复，慎用）</td>
+</tr>
+<tr>
+<td><code>SET</code> / <code>DELETE</code> / <code>DETACH DELETE</code></td>
+<td>改属性 / 删边或节点</td>
+</tr>
+<tr>
+<td><code>RETURN</code></td>
+<td>返回结果</td>
+</tr>
+</tbody></table>
+<h3>约束与索引（生产必想）</h3>
+<pre><code class="language-cypher">CREATE CONSTRAINT entity_id IF NOT EXISTS
+FOR (n:Entity) REQUIRE n.id IS UNIQUE
+</code></pre>
+<ul>
+<li><strong>唯一约束</strong>：防止重复业务键  </li>
+<li><strong>索引</strong>：加速 <code>WHERE name = …</code> 等查找<br>本项目在 <code>ensureConstraints()</code> 中创建 <code>Entity.id</code> 唯一约束。</li>
+</ul>
+<h3>会话与事务（Driver 用法要点）</h3>
+<pre><code class="language-text">Driver（进程级单例）
+  └─ Session（一次逻辑工作单元）
+       └─ Transaction（读写事务，可批量 MERGE）
+</code></pre>
+<ul>
+<li>读多用只读会话/查询；写用 <code>executeWrite</code>  </li>
+<li><strong>同一 Session 不要并行跑多条查询</strong>（易报错）  </li>
+<li><code>LIMIT</code> 等整数参数应用 <code>neo4j.int()</code>（本项目已处理）</li>
+</ul>
+<h3>本项目落库模型（钉在代码上）</h3>
+<table>
+<thead>
+<tr>
+<th>设计</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>统一标签 <code>:Entity</code></td>
+<td>便于「查全部实体」</td>
+</tr>
+<tr>
+<td>类型标签 <code>:Company</code> / <code>:Stock</code> …</td>
+<td>便于按类过滤</td>
+</tr>
+<tr>
+<td>属性 <code>entityType</code></td>
+<td>与标签双轨，方便应用层</td>
+</tr>
+<tr>
+<td>业务键 <code>name + entityType</code></td>
+<td><code>MERGE</code> 去重依据之一</td>
+</tr>
+<tr>
+<td>文档 <code>:Document</code> + <code>MENTIONS</code></td>
+<td>溯源：知识从哪篇文档来</td>
+</tr>
+</tbody></table>
+<pre><code class="language-text">(:Document)-[:MENTIONS]-&gt;(:Company)-[:LISTED_AS]-&gt;(:Stock)
+                              └[:BELONGS_TO]-&gt;(:Industry)
+</code></pre>
+<p>对应代码：<code>ingestExtractedGraph</code> / <code>getGraph</code> / <code>searchGraph</code>（<code>backend/src/services/kg.ts</code>）。</p>
+<h3>Neo4j 与「知识表示」如何对应</h3>
+<table>
+<thead>
+<tr>
+<th>表示层概念</th>
+<th>Neo4j 落地</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>类 Class</td>
+<td>Label / <code>entityType</code></td>
+</tr>
+<tr>
+<td>个体 Individual</td>
+<td>Node</td>
+</tr>
+<tr>
+<td>对象属性</td>
+<td>Relationship Type</td>
+</tr>
+<tr>
+<td>数据属性</td>
+<td>Property</td>
+</tr>
+<tr>
+<td>公理（唯一、基数等）</td>
+<td>Constraint + 应用校验（完整 OWL 推理不在 Neo4j 内核）</td>
+</tr>
+</tbody></table>
+<h3>速记</h3>
+<ul>
+<li>Neo4j 回答：<strong>「属性图怎么工程化存与查」</strong></li>
+<li>入库优先 <strong><code>MERGE</code> + 约束</strong>，查询优先 <strong>模式匹配与多跳</strong></li>
+</ul>
+<hr>
+<h2>3. RDF 存储</h2>
+<h3>核心定义</h3>
+<p>以 <strong>RDF 三元组</strong>（及可选具名图）为存储单位的知识库，常用 <strong>SPARQL</strong> 查询；可与 RDFS/OWL 推理器配合。</p>
+<pre><code class="language-text">&lt;http://example.org/sec#Moutai&gt;
+    &lt;http://example.org/sec#listedAs&gt;
+        &lt;http://example.org/sec#S600519&gt; .
+</code></pre>
+<h3>和属性图存什么不一样</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Neo4j 属性图</th>
+<th>RDF 库</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>标识</td>
+<td>内部 id + 业务属性</td>
+<td>全局 <strong>IRI</strong></td>
+</tr>
+<tr>
+<td>边</td>
+<td>可直接挂丰富属性</td>
+<td>边属性常需「再化」（空白节点/中间资源）</td>
+</tr>
+<tr>
+<td>查询语</td>
+<td>Cypher</td>
+<td>SPARQL</td>
+</tr>
+<tr>
+<td>类型</td>
+<td>Label</td>
+<td><code>rdf:type</code></td>
+</tr>
+<tr>
+<td>推理</td>
+<td>规则/插件/应用层</td>
+<td>常原生接 RDFS/OWL 推理</td>
+</tr>
+<tr>
+<td>交换</td>
+<td>专有/导出</td>
+<td>标准 Turtle/RDF-XML/JSON-LD</td>
+</tr>
+</tbody></table>
+<p>「边也要有属性」（如持股 12%）时：</p>
+<ul>
+<li>属性图：<code>(a)-[:HOLDS_SHARE {ratio:12}]-&gt;(b)</code> 很自然  </li>
+<li>RDF：往往引入中间节点或 RDF-star 等扩展</li>
+</ul>
+<h3>常见 RDF 存储形态</h3>
+<table>
+<thead>
+<tr>
+<th>形态</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>三元组库（Triple Store）</td>
+<td>GraphDB、Jena TDB、Blazegraph、Virtuoso…</td>
+</tr>
+<tr>
+<td>文件/数据集</td>
+<td><code>.ttl</code> / <code>.nt</code> 批量交换（如 <code>md/examples/securities-mini.ttl</code>）</td>
+</tr>
+<tr>
+<td>混合架构</td>
+<td>Neo4j 服务在线查询 + RDF 做发布/对齐/推理</td>
+</tr>
+</tbody></table>
+<h3>SPARQL 最小对照</h3>
+<pre><code class="language-sparql">PREFIX : &lt;http://example.org/sec#&gt;
+
+SELECT ?company ?stock WHERE {
+  ?company a :ListedCompany ;
+           :listedAs ?stock .
+}
+</code></pre>
+<p>约等于 Cypher：</p>
+<pre><code class="language-cypher">MATCH (company:ListedCompany)-[:LISTED_AS]-&gt;(stock:Stock)
+RETURN company, stock
+</code></pre>
+<h3>何时选 RDF 存储</h3>
+<ul>
+<li>需要与外部语义网数据集<strong>互联互通</strong>  </li>
+<li>需要较完整的 <strong>OWL 一致性检查 / 分类推理</strong>  </li>
+<li>数据以开放标准发布（政府、百科、科研 KG）</li>
+</ul>
+<p>何时仍用 Neo4j：</p>
+<ul>
+<li>证券投研/风控等<strong>业务应用</strong>、可视化、高并发点查与多跳  </li>
+<li>团队更熟属性图与 Cypher（本仓库路线）</li>
+</ul>
+<h3>速记</h3>
+<ul>
+<li>RDF 存储回答：<strong>「用标准三元组把知识存成可交换、可推理的网」</strong></li>
+<li>文件里的 OWL/Turtle 是「可交换的知识」；RDF 库是「可查询的三元组服务」</li>
+</ul>
+<hr>
+<h2>对照一张表（考试/面试够用）</h2>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>图数据库（总称）</th>
+<th>Neo4j</th>
+<th>RDF 存储</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>模型</td>
+<td>图</td>
+<td>属性图</td>
+<td>RDF 图</td>
+</tr>
+<tr>
+<td>查询</td>
+<td>视产品而定</td>
+<td>Cypher</td>
+<td>SPARQL</td>
+</tr>
+<tr>
+<td>协议/驱动</td>
+<td>—</td>
+<td>Bolt + neo4j-driver</td>
+<td>HTTP/SPARQL endpoint 等</td>
+</tr>
+<tr>
+<td>推理</td>
+<td>视产品而定</td>
+<td>偏应用/插件</td>
+<td>常接 RDFS/OWL</td>
+</tr>
+<tr>
+<td>本项目</td>
+<td>选用图库范式</td>
+<td>✅ 主存储</td>
+<td>示例 <code>.ttl</code>，非主库</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>和本项目的映射</h2>
+<table>
+<thead>
+<tr>
+<th>概念</th>
+<th>落点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>图数据库实践</td>
+<td>整套 B/S：上传 → 解析 → 写入 → 可视化查询</td>
+</tr>
+<tr>
+<td>Neo4j 连接</td>
+<td><code>backend/src/db.ts</code>、<code>backend/.env</code></td>
+</tr>
+<tr>
+<td>约束</td>
+<td><code>ensureConstraints()</code></td>
+</tr>
+<tr>
+<td>写入</td>
+<td><code>ingestExtractedGraph</code>（<code>MERGE</code> 实体与关系）</td>
+</tr>
+<tr>
+<td>读取</td>
+<td><code>getGraph</code> / <code>searchGraph</code> / <code>getStats</code></td>
+</tr>
+<tr>
+<td>RDF 示例（表示/交换）</td>
+<td><code>md/examples/securities-mini.ttl</code></td>
+</tr>
+<tr>
+<td>本地库</td>
+<td><code>docker-compose.yml</code> 或已有 Neo4j 容器</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>5 分钟自测</h2>
+<ol>
+<li>为什么知识图谱常用图数据库而不是只靠关系表？  </li>
+<li>属性图的三要素是什么？本项目 <code>Entity</code> + <code>Company</code> 双标签用意？  </li>
+<li><code>MERGE</code> 和 <code>CREATE</code> 在入库时有何区别？  </li>
+<li>Neo4j 的 Bolt / Cypher 各是什么角色？  </li>
+<li>RDF 存储与 Neo4j 怎么选？边属性场景谁更省事？</li>
+</ol>
+<p><strong>参考答案要点</strong>：<br>①多跳关联是一等公民<br>②节点/关系/属性；统一扫描 + 按类型过滤<br>③MERGE 幂等，CREATE 易重复<br>④Bolt 连接协议，Cypher 查询语言<br>⑤业务多跳用 Neo4j，语义互操作/OWL 用 RDF；边属性属性图更直接</p>
+<hr>
+<h2>建议学习顺序</h2>
+<ol>
+<li>搞清 <strong>属性图 vs RDF 图</strong>（先选型观）  </li>
+<li>在 Browser 里手写 10 条 Cypher（<code>MERGE</code>/<code>MATCH</code>/<code>路径</code>）  </li>
+<li>对照本仓库 <code>kg.ts</code> 看 <strong>Driver 会话与入库</strong>  </li>
+<li>打开 <code>securities-mini.ttl</code>，对比「同一知识」的 RDF 写法  </li>
+<li>需要推理/开放数据时再深入 <strong>SPARQL + RDF 库</strong></li>
+</ol>
+
+      <nav class="pager"><a href="2-知识获取.html">← 2 获取</a><a href="4-知识推理.html">4 推理 →</a></nav>
+    </article>
+  </main>
+  <footer class="footer">
+    由 <code>md/build-site.mjs</code> 从 Markdown 生成 · 可直接静态部署 <code>md/site/</code>
+  </footer>
+</body>
+</html>

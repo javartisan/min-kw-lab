@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>知识图谱 · 七大技术方向 · 证券知识图谱</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Sora:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html">知识图谱 KG</a>
+      <nav class="nav">
+          <a href="index.html" class="active">总览</a>
+          <a href="1-知识表示.html">1 表示</a>
+          <a href="2-知识获取.html">2 获取</a>
+          <a href="3-知识存储.html">3 存储</a>
+          <a href="4-知识推理.html">4 推理</a>
+          <a href="5-知识融合.html">5 融合</a>
+          <a href="6-知识问答.html">6 问答</a>
+          <a href="7-知识分析.html">7 分析</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <article class="article">
+      <h1>知识图谱 KG</h1>
+<blockquote>
+<p>七大技术方向精炼体系：表示 → 获取 → 存储 → 推理 → 融合 → 问答 → 分析<br>（前五维对应经典「建图谱」链路；问答 / 分析对应「用图谱」出口。）</p>
+</blockquote>
+<pre><code>                        ┌──────────────┐
+                        │ 知识图谱 KG  │
+                        └──────┬───────┘
+     ┌──────┬──────┬───────┼───────┬──────┬──────┐
+     ▼      ▼      ▼       ▼       ▼      ▼      ▼
+   表示   获取   存储    推理    融合   问答   分析
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>方向</th>
+<th>一句话</th>
+<th>笔记</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>建图谱</td>
+<td>1 表示</td>
+<td>定概念与形式化</td>
+<td><a href="1-%E7%9F%A5%E8%AF%86%E8%A1%A8%E7%A4%BA.html">1、知识表示</a></td>
+</tr>
+<tr>
+<td>建图谱</td>
+<td>2 获取</td>
+<td>从数据抽出实体关系</td>
+<td><a href="2-%E7%9F%A5%E8%AF%86%E8%8E%B7%E5%8F%96.html">2、知识获取</a></td>
+</tr>
+<tr>
+<td>建图谱</td>
+<td>3 存储</td>
+<td>持久化与查询</td>
+<td><a href="3-%E7%9F%A5%E8%AF%86%E5%AD%98%E5%82%A8.html">3、知识存储</a></td>
+</tr>
+<tr>
+<td>建图谱</td>
+<td>4 推理</td>
+<td>推出隐含或发现矛盾</td>
+<td><a href="4-%E7%9F%A5%E8%AF%86%E6%8E%A8%E7%90%86.html">4、知识推理</a></td>
+</tr>
+<tr>
+<td>建图谱</td>
+<td>5 融合</td>
+<td>多源对齐与消歧</td>
+<td><a href="5-%E7%9F%A5%E8%AF%86%E8%9E%8D%E5%90%88.html">5、知识融合</a></td>
+</tr>
+<tr>
+<td>用图谱</td>
+<td>6 问答</td>
+<td>自然语言问图作答</td>
+<td><a href="6-%E7%9F%A5%E8%AF%86%E9%97%AE%E7%AD%94.html">6、知识问答</a></td>
+</tr>
+<tr>
+<td>用图谱</td>
+<td>7 分析</td>
+<td>结构挖掘与指标洞察</td>
+<td><a href="7-%E7%9F%A5%E8%AF%86%E5%88%86%E6%9E%90.html">7、知识分析</a></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>1. 知识表示</h2>
+<p>定义概念、关系及其形式化表达方式。</p>
+<table>
+<thead>
+<tr>
+<th>要点</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Ontology</strong></td>
+<td>本体：约定领域内的概念、属性与关系体系（含 <strong>TBox 模式层</strong> / <strong>ABox 数据层</strong>）</td>
+</tr>
+<tr>
+<td><strong>RDF/OWL</strong></td>
+<td>语义网标准：用三元组与本体语言描述知识；推理时「TBox 公理 × ABox 事实」</td>
+</tr>
+<tr>
+<td><strong>Embedding</strong></td>
+<td>嵌入表示：将实体与关系映射到连续向量空间</td>
+</tr>
+</tbody></table>
+<p>精炼笔记 → <a href="1-%E7%9F%A5%E8%AF%86%E8%A1%A8%E7%A4%BA.html"><code>1、知识表示-精炼学习笔记.md</code></a></p>
+<hr>
+<h2>2. 知识获取</h2>
+<p>从非结构化/半结构化数据中抽取知识。</p>
+<table>
+<thead>
+<tr>
+<th>要点</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>NLP 抽取</strong></td>
+<td>基于自然语言处理的知识抽取流水线</td>
+</tr>
+<tr>
+<td><strong>NER</strong></td>
+<td>Named Entity Recognition，命名实体识别</td>
+</tr>
+<tr>
+<td><strong>RE</strong></td>
+<td>Relation Extraction，关系抽取</td>
+</tr>
+<tr>
+<td><strong>EE</strong></td>
+<td>Event Extraction，事件抽取</td>
+</tr>
+</tbody></table>
+<p>精炼笔记 → <a href="2-%E7%9F%A5%E8%AF%86%E8%8E%B7%E5%8F%96.html"><code>2、知识获取-精炼学习笔记.md</code></a></p>
+<hr>
+<h2>3. 知识存储</h2>
+<p>持久化与查询知识图谱。</p>
+<table>
+<thead>
+<tr>
+<th>要点</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>图数据库</strong></td>
+<td>以图模型存储节点与边，适合关联查询</td>
+</tr>
+<tr>
+<td><strong>Neo4j</strong></td>
+<td>主流属性图数据库（Bolt / Cypher）</td>
+</tr>
+<tr>
+<td><strong>RDF</strong></td>
+<td>以 RDF 三元组库形式存储语义数据</td>
+</tr>
+</tbody></table>
+<p>精炼笔记 → <a href="3-%E7%9F%A5%E8%AF%86%E5%AD%98%E5%82%A8.html"><code>3、知识存储-精炼学习笔记.md</code></a></p>
+<hr>
+<h2>4. 知识推理</h2>
+<p>由已有知识推导隐含事实。</p>
+<table>
+<thead>
+<tr>
+<th>要点</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>规则推理</strong></td>
+<td>基于逻辑规则、产生式规则推导新知识</td>
+</tr>
+<tr>
+<td><strong>本体推理</strong></td>
+<td>基于本体公理（传递、包含、互斥等）推理</td>
+</tr>
+<tr>
+<td><strong>Embedding</strong></td>
+<td>基于向量表示做链接预测、补全与推理</td>
+</tr>
+</tbody></table>
+<p>精炼笔记 → <a href="4-%E7%9F%A5%E8%AF%86%E6%8E%A8%E7%90%86.html"><code>4、知识推理-精炼学习笔记.md</code></a></p>
+<hr>
+<h2>5. 知识融合</h2>
+<p>整合多源知识，消除冗余与冲突。</p>
+<table>
+<thead>
+<tr>
+<th>要点</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>实体对齐</strong></td>
+<td>识别并合并指向同一现实对象的不同实体</td>
+</tr>
+<tr>
+<td><strong>本体匹配</strong></td>
+<td>在不同本体/模式之间建立概念对应关系</td>
+</tr>
+<tr>
+<td><strong>冲突消解</strong></td>
+<td>对矛盾信息做取舍、置信度加权或人工裁决</td>
+</tr>
+</tbody></table>
+<p>精炼笔记 → <a href="5-%E7%9F%A5%E8%AF%86%E8%9E%8D%E5%90%88.html"><code>5、知识融合-精炼学习笔记.md</code></a></p>
+<hr>
+<h2>6. 知识问答</h2>
+<p>面向自然语言的图谱问答与证据返回。</p>
+<table>
+<thead>
+<tr>
+<th>要点</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>KBQA</strong></td>
+<td>以知识图谱为真相来源的问答</td>
+</tr>
+<tr>
+<td><strong>语义解析</strong></td>
+<td>自然语言 → Cypher / SPARQL</td>
+</tr>
+<tr>
+<td><strong>GraphRAG</strong></td>
+<td>检索子图作上下文再生成答复</td>
+</tr>
+</tbody></table>
+<p>精炼笔记 → <a href="6-%E7%9F%A5%E8%AF%86%E9%97%AE%E7%AD%94.html"><code>6、知识问答-精炼学习笔记.md</code></a></p>
+<hr>
+<h2>7. 知识分析</h2>
+<p>在图谱上做结构挖掘、指标统计与可视化洞察。</p>
+<table>
+<thead>
+<tr>
+<th>要点</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>图分析</strong></td>
+<td>中心性、路径、社区、结构相似性</td>
+</tr>
+<tr>
+<td><strong>指标洞察</strong></td>
+<td>规模、分布、质量与业务 KPI</td>
+</tr>
+<tr>
+<td><strong>可视化分析</strong></td>
+<td>交互探索、下钻与叙事展示</td>
+</tr>
+</tbody></table>
+<p>精炼笔记 → <a href="7-%E7%9F%A5%E8%AF%86%E5%88%86%E6%9E%90.html"><code>7、知识分析-精炼学习笔记.md</code></a></p>
+<hr>
+<h2>体系关系（简图）</h2>
+<pre><code class="language-text">知识图谱 KG
+│
+├──【建图谱】
+│   ├── 1 知识表示
+│   │   ├── Ontology
+│   │   ├── RDF/OWL
+│   │   └── Embedding
+│   ├── 2 知识获取
+│   │   ├── NLP抽取
+│   │   ├── NER
+│   │   ├── RE
+│   │   └── EE
+│   ├── 3 知识存储
+│   │   ├── 图数据库
+│   │   ├── Neo4j
+│   │   └── RDF
+│   ├── 4 知识推理
+│   │   ├── 规则推理
+│   │   ├── 本体推理
+│   │   └── Embedding
+│   └── 5 知识融合
+│       ├── 实体对齐
+│       ├── 本体匹配
+│       └── 冲突消解
+│
+└──【用图谱】
+    ├── 6 知识问答
+    │   ├── KBQA
+    │   ├── 语义解析
+    │   └── GraphRAG
+    └── 7 知识分析
+        ├── 图分析
+        ├── 指标洞察
+        └── 可视化分析
+</code></pre>
+<h2>端到端闭环（证券项目视角）</h2>
+<pre><code class="language-text">研报/公告 → 获取 → 融合 → 存入 Neo4j
+                ↑ 表示(本体)      ↓
+           规则/本体/向量推理（可选）
+                ↓
+     ┌──────────┴──────────┐
+     ▼                     ▼
+   问答(KBQA/模板)      分析(stats/路径/画布)
+</code></pre>
+
+      <nav class="pager"><span></span><a href="1-知识表示.html">1 表示 →</a></nav>
+    </article>
+  </main>
+  <footer class="footer">
+    由 <code>md/build-site.mjs</code> 从 Markdown 生成 · 可直接静态部署 <code>md/site/</code>
+  </footer>
+</body>
+</html>

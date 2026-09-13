@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>6、知识问答 · 证券知识图谱</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Sora:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html">知识图谱 KG</a>
+      <nav class="nav">
+          <a href="index.html">总览</a>
+          <a href="1-知识表示.html">1 表示</a>
+          <a href="2-知识获取.html">2 获取</a>
+          <a href="3-知识存储.html">3 存储</a>
+          <a href="4-知识推理.html">4 推理</a>
+          <a href="5-知识融合.html">5 融合</a>
+          <a href="6-知识问答.html" class="active">6 问答</a>
+          <a href="7-知识分析.html">7 分析</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <article class="article">
+      <h1>知识问答 · 精炼学习笔记</h1>
+<blockquote>
+<p>目标：快速抓住 KBQA / 语义解析 / GraphRAG 的核心，能说清「自然语言问题如何变成图谱上的答案」。</p>
+</blockquote>
+<hr>
+<h2>一句话总览</h2>
+<p><strong>知识问答（KGQA）</strong> = 用自然语言提问，基于知识图谱返回<strong>可追溯、可解释</strong>的答案（实体、关系、子图或聚合结果）。</p>
+<table>
+<thead>
+<tr>
+<th>要点</th>
+<th>本质</th>
+<th>输出</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>KBQA</td>
+<td>问题 → 图上结构化查询 → 答案</td>
+<td>「茅台属于什么行业？→ 白酒」</td>
+</tr>
+<tr>
+<td>语义解析</td>
+<td>把问句编译成 Cypher/SPARQL</td>
+<td>可执行查询语句</td>
+</tr>
+<tr>
+<td>GraphRAG</td>
+<td>检索子图/路径作上下文再生成</td>
+<td>自然语言答复 + 证据边</td>
+</tr>
+</tbody></table>
+<pre><code class="language-text">用户问句
+  → 理解（意图/实体/约束）
+  → 查图（Cypher / SPARQL / 路径）
+  → （可选）推理补全
+  → 答案生成 + 证据展示
+</code></pre>
+<p>在七大方向中的位置：<strong>表示～融合</strong>把图谱建好；<strong>问答</strong>是面向人的核心应用出口之一。</p>
+<hr>
+<h2>1. KBQA（Knowledge Base Question Answering）</h2>
+<h3>核心定义</h3>
+<p>以知识库/知识图谱为唯一或主真相来源的问答：答案应能在图上找到支撑三元组或路径，而不是凭空生成。</p>
+<h3>问题类型（由易到难）</h3>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>例子</th>
+<th>图上怎么做</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>单跳事实</td>
+<td>茅台的股票代码？</td>
+<td>一跳 <code>LISTED_AS</code></td>
+</tr>
+<tr>
+<td>多跳</td>
+<td>丁雄军任职公司属于什么行业？</td>
+<td>Person→Company→Industry</td>
+</tr>
+<tr>
+<td>约束/聚合</td>
+<td>白酒行业有哪些公司？</td>
+<td><code>BELONGS_TO</code> 反向 + 列表</td>
+</tr>
+<tr>
+<td>比较/是否</td>
+<td>A 与 B 是否竞争？</td>
+<td>查有无 <code>COMPETES_WITH</code></td>
+</tr>
+<tr>
+<td>路径解释</td>
+<td>A 如何关联到 B？</td>
+<td>最短路径 / 路径枚举</td>
+</tr>
+</tbody></table>
+<h3>经典流水线</h3>
+<pre><code class="language-text">1. 实体链接：问句里的「茅台」→ 图节点 贵州茅台
+2. 关系/意图识别：问的是代码？行业？高管？
+3. 查询构造：生成 Cypher/SPARQL 或填槽模板
+4. 执行与排序：跑图查询，多候选时打分
+5. 答案包装：返回值 + 证据三元组/路径
+</code></pre>
+<h3>与「聊天模型直接答」的差别</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>纯 LLM</th>
+<th>KBQA</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>真相来源</td>
+<td>参数记忆</td>
+<td>图谱显式事实</td>
+</tr>
+<tr>
+<td>可追溯</td>
+<td>弱</td>
+<td>强（可点开边）</td>
+</tr>
+<tr>
+<td>时效</td>
+<td>易过时</td>
+<td>随库更新</td>
+</tr>
+<tr>
+<td>幻觉</td>
+<td>高风险</td>
+<td>无结果就说「库中无」</td>
+</tr>
+</tbody></table>
+<p>证券场景更需要 <strong>KBQA 或 GraphRAG</strong>，避免「瞎编董事长」。</p>
+<h3>速记</h3>
+<ul>
+<li>KBQA 回答：<strong>「答案必须能在图上指出来」</strong></li>
+<li>评价常看：答案对不对、能否指出证据路径</li>
+</ul>
+<hr>
+<h2>2. 语义解析（Semantic Parsing → 图查询）</h2>
+<h3>核心定义</h3>
+<p>把自然语言映射为形式化查询（对 Neo4j 即 <strong>Cypher</strong>，对 RDF 即 <strong>SPARQL</strong>）。是 KBQA 的「编译器」核心。</p>
+<h3>三条工程路线</h3>
+<table>
+<thead>
+<tr>
+<th>路线</th>
+<th>做法</th>
+<th>优缺点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>模板/槽位</strong></td>
+<td>「X的股票代码」→ 固定 Cypher</td>
+<td>准、可控；覆盖窄</td>
+</tr>
+<tr>
+<td><strong>语义解析模型</strong></td>
+<td>学 NL→查询AST/语句</td>
+<td>泛化较好；需标注</td>
+</tr>
+<tr>
+<td><strong>LLM 生成查询</strong></td>
+<td>提示生成 Cypher 再执行</td>
+<td>快；必须校验防注入/胡写</td>
+</tr>
+</tbody></table>
+<h3>最小证券模板例子</h3>
+<p>问句：<code>贵州茅台属于什么行业？</code></p>
+<pre><code class="language-cypher">MATCH (c:Company {name: $name})-[:BELONGS_TO]-&gt;(i:Industry)
+RETURN i.name AS answer
+</code></pre>
+<p>问句：<code>宁德时代的董事长是谁？</code></p>
+<pre><code class="language-cypher">MATCH (c:Company {name: $name})-[:HAS_EXECUTIVE]-&gt;(p:Person)
+RETURN p.name AS answer
+</code></pre>
+<p>问句：<code>和贵州茅台竞争的公司有哪些？</code></p>
+<pre><code class="language-cypher">MATCH (c:Company {name: $name})-[:COMPETES_WITH]-(x:Company)
+RETURN DISTINCT x.name AS answer
+</code></pre>
+<h3>安全与落地要点</h3>
+<ol>
+<li><strong>参数化</strong>：名称等用参数绑定，禁止字符串拼接用户输入进查询  </li>
+<li><strong>白名单</strong>：只允许只读查询 / 限制深度与 LIMIT  </li>
+<li><strong>校验</strong>：LLM 生成的 Cypher 先 AST/关键字检查再执行  </li>
+<li><strong>无结果策略</strong>：明确「图谱暂无」，可降级检索文档</li>
+</ol>
+<h3>速记</h3>
+<ul>
+<li>语义解析回答：<strong>「人话怎么变成可执行的图查询」</strong></li>
+<li>入门用模板，进阶用模型/LLM + 护栏</li>
+</ul>
+<hr>
+<h2>3. GraphRAG（图增强检索生成）</h2>
+<h3>核心定义</h3>
+<p>在 RAG（检索增强生成）中，检索对象不只是文本块，而是<strong>子图、路径、社区摘要</strong>，再交给 LLM 组织自然语言答案。</p>
+<pre><code class="language-text">问句
+ → 链实体 / 扩邻居 / 抽相关路径
+ → 把三元组或子图序列化成上下文
+ → LLM 生成答复（要求引用图内事实）
+</code></pre>
+<h3>何时用 GraphRAG 而不是纯 KBQA</h3>
+<table>
+<thead>
+<tr>
+<th>更适合 GraphRAG</th>
+<th>更适合纯 KBQA</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>「解读一下茅台的产业位置」</td>
+<td>「茅台代码是多少」</td>
+</tr>
+<tr>
+<td>需要组织多跳证据成段落</td>
+<td>答案是单个槽位值</td>
+</tr>
+<tr>
+<td>图谱稀疏，要结合文档</td>
+<td>图上事实完整且结构化</td>
+</tr>
+</tbody></table>
+<h3>与本仓库的衔接</h3>
+<p>当前前端是<strong>可视化 + 关键词检索</strong>，尚未做问答框。最小演进：</p>
+<ol>
+<li>模板 KBQA API：<code>POST /api/qa { question }</code> → 匹配模板 → Cypher → JSON 答案  </li>
+<li>答案面板展示证据边（复用 <code>graph</code> 接口子图）  </li>
+<li>再视需要加 LLM 生成叙述（GraphRAG）</li>
+</ol>
+<h3>速记</h3>
+<ul>
+<li>GraphRAG 回答：<strong>「先取真子图，再让模型说人话」</strong></li>
+<li>原则：<strong>图管事实，模型管表达</strong></li>
+</ul>
+<hr>
+<h2>对照一张表（考试/面试够用）</h2>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>KBQA</th>
+<th>语义解析</th>
+<th>GraphRAG</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>焦点</td>
+<td>端到端问答系统</td>
+<td>NL→查询</td>
+<td>检索子图+生成</td>
+</tr>
+<tr>
+<td>答案形态</td>
+<td>槽位/列表/子图</td>
+<td>Cypher/SPARQL</td>
+<td>自然语言+引用</td>
+</tr>
+<tr>
+<td>可解释</td>
+<td>证据路径</td>
+<td>查询本身</td>
+<td>依赖提示约束</td>
+</tr>
+<tr>
+<td>本项目</td>
+<td>可模板化落地</td>
+<td>Cypher 已具备</td>
+<td>后续增强</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>和本项目的映射</h2>
+<table>
+<thead>
+<tr>
+<th>概念</th>
+<th>落点 / 延伸</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>图查询能力</td>
+<td><code>getGraph</code> / <code>searchGraph</code>、Cypher in <code>kg.ts</code></td>
+</tr>
+<tr>
+<td>实体类型与关系</td>
+<td><code>types.ts</code>（问答槽位词表来源）</td>
+</tr>
+<tr>
+<td>证据展示</td>
+<td>前端力导向图点击节点</td>
+</tr>
+<tr>
+<td>待建</td>
+<td><code>/api/qa</code>、问句模板、答案+证据返回</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>5 分钟自测</h2>
+<ol>
+<li>KBQA 与纯 LLM 问答的核心差别？  </li>
+<li>单跳与多跳问题在图上差在哪？  </li>
+<li>语义解析三条路线？生产为何要参数化与白名单？  </li>
+<li>GraphRAG 里「图」和「LLM」各管什么？  </li>
+<li>证券「董事长是谁」用哪条 Cypher 模式？</li>
+</ol>
+<p><strong>参考答案要点</strong>：<br>①答案须有图上证据<br>②关系跳数与路径长度<br>③模板/模型/LLM；防注入与胡查<br>④图供事实，模型供表述<br>⑤Company-HAS_EXECUTIVE→Person</p>
+<hr>
+<h2>建议学习顺序</h2>
+<ol>
+<li>罗列 10 个证券高频问句，标成单跳/多跳  </li>
+<li>为每类写一条 <strong>Cypher 模板</strong>  </li>
+<li>做实体链接（问句mention→节点名）  </li>
+<li>再考虑 LLM 生成查询或 GraphRAG 叙述  </li>
+<li>始终返回<strong>证据边</strong>，方便审计</li>
+</ol>
+
+      <nav class="pager"><a href="5-知识融合.html">← 5 融合</a><a href="7-知识分析.html">7 分析 →</a></nav>
+    </article>
+  </main>
+  <footer class="footer">
+    由 <code>md/build-site.mjs</code> 从 Markdown 生成 · 可直接静态部署 <code>md/site/</code>
+  </footer>
+</body>
+</html>

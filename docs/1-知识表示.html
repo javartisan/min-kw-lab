@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1、知识表示 · 证券知识图谱</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Sora:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html">知识图谱 KG</a>
+      <nav class="nav">
+          <a href="index.html">总览</a>
+          <a href="1-知识表示.html" class="active">1 表示</a>
+          <a href="2-知识获取.html">2 获取</a>
+          <a href="3-知识存储.html">3 存储</a>
+          <a href="4-知识推理.html">4 推理</a>
+          <a href="5-知识融合.html">5 融合</a>
+          <a href="6-知识问答.html">6 问答</a>
+          <a href="7-知识分析.html">7 分析</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <article class="article">
+      <h1>知识表示 · 精炼学习笔记</h1>
+<blockquote>
+<p>目标：快速抓住 Ontology / RDF·OWL / Embedding 的核心，能说清「是什么、为什么、怎么用」。</p>
+</blockquote>
+<hr>
+<h2>一句话总览</h2>
+<p><strong>知识表示</strong> = 把现实世界的概念与关系，变成计算机可存储、可查询、可推理的形式。</p>
+<table>
+<thead>
+<tr>
+<th>路线</th>
+<th>本质</th>
+<th>强项</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Ontology</td>
+<td>人可读的领域模型约定</td>
+<td>语义清晰、可共享</td>
+</tr>
+<tr>
+<td>RDF/OWL</td>
+<td>形式化三元组 + 本体语言</td>
+<td>互操作、逻辑推理</td>
+</tr>
+<tr>
+<td>Embedding</td>
+<td>向量空间数值表示</td>
+<td>相似度、补全、机器学习</td>
+</tr>
+</tbody></table>
+<p>三者关系：<strong>Ontology 定语义 → RDF/OWL 落形式 → Embedding 做计算增强</strong>（可并存，非互斥）。</p>
+<hr>
+<h2>1. Ontology（本体）</h2>
+<h3>核心定义</h3>
+<p>本体是对某个领域中<strong>共享概念体系</strong>的形式化规范说明：有哪些类、属性、关系，以及它们之间的约束。</p>
+<h3>必须记住的 4 个构件</h3>
+<ol>
+<li><strong>类（Class / Concept）</strong>：事物类别，如 <code>Company</code>、<code>Stock</code></li>
+<li><strong>个体（Individual）</strong>：类的实例，如「贵州茅台」</li>
+<li><strong>属性（Property）</strong></li>
+</ol>
+<ul>
+<li>对象属性：实体→实体（<code>BELONGS_TO</code>）</li>
+<li>数据属性：实体→字面量（<code>stockCode = &quot;600519&quot;</code>）</li>
+</ul>
+<ol start="4">
+<li><strong>公理/约束（Axiom）</strong>：如子类、互斥、基数、定义域/值域</li>
+</ol>
+<h3>TBox / ABox：初学者必懂的「两层」分法</h3>
+<p><strong>需要关注吗？需要——但只要直觉级，不必先啃描述逻辑公式。</strong></p>
+<p>读 OWL、Protégé、推理论文时几乎都会遇到这两个词；它们只是把上面四个构件按「模式 vs 数据」切开：</p>
+<table>
+<thead>
+<tr>
+<th>术语</th>
+<th>全称直觉</th>
+<th>装什么</th>
+<th>对应四个构件</th>
+<th>证券例子</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>TBox</strong></td>
+<td>Terminological Box<br>术语箱 / <strong>模式层</strong></td>
+<td>类、属性、关系、公理——「领域词典与规矩」</td>
+<td>①类 ②关系/对象属性 ③数据属性定义 ④公理</td>
+<td><code>ListedCompany ⊑ Company</code><br><code>listedAs</code> 的定义域/值域<br><code>Person ⊥ Company</code></td>
+</tr>
+<tr>
+<td><strong>ABox</strong></td>
+<td>Assertional Box<br>断言箱 / <strong>数据层</strong></td>
+<td>具体个体及其类型、关系——「库里的事实」</td>
+<td>④里的<strong>个体</strong> + 实例级断言</td>
+<td><code>Moutai a ListedCompany</code><br><code>Moutai listedAs S600519</code></td>
+</tr>
+</tbody></table>
+<pre><code class="language-text">┌──────────────── TBox（模式层）────────────────┐
+│  类层次、属性定义、互斥/基数等公理              │
+│  「能有什么、怎么连、有什么限制」                │
+└──────────────────────┬───────────────────────┘
+                       │ 实例化 instantiate
+                       ▼
+┌──────────────── ABox（数据层）────────────────┐
+│  具体实体 + 具体边                             │
+│  「实际是谁、实际连了什么」                      │
+└──────────────────────────────────────────────┘
+知识库 KB ≈ TBox + ABox
+</code></pre>
+<p>配图（四构件如何落在两层）→ <a href="ontology-kg-four-components/index.html">ontology-kg-four-components</a></p>
+<p><strong>初学者怎么用这组词（够用了）：</strong></p>
+<ul>
+<li>设计本体 / 画 Schema → 你在写 <strong>TBox</strong></li>
+<li>从研报抽取、MERGE 进 Neo4j → 你在写 <strong>ABox</strong></li>
+<li>本体推理：用 <strong>TBox 公理</strong>去补全或校验 <strong>ABox 事实</strong></li>
+<li>和数据库类比：TBox ≈ 表结构 + 约束；ABox ≈ 表里的行（但图上是点边）</li>
+</ul>
+<blockquote>
+<p><strong>不必一开始死记公式</strong>；先做到：看到材料里写 TBox/ABox，能立刻翻译成「模式 / 实例」。深入描述逻辑（⊑、∃、推理复杂度）放到进阶。</p>
+</blockquote>
+<h3>和「Schema / 数据模型」差在哪</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Schema（库表/图模型）</th>
+<th>Ontology</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>目的</td>
+<td>支撑存储与查询</td>
+<td>支撑共享语义与推理</td>
+</tr>
+<tr>
+<td>重点</td>
+<td>字段、类型、索引</td>
+<td>概念层次、逻辑约束</td>
+</tr>
+<tr>
+<td>跨系统</td>
+<td>常难对齐</td>
+<td>强调可复用、可对齐</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>实务口诀：<strong>先本体后落库</strong>——证券 KG 里先定「公司/股票/行业/关系」，再映射到 Neo4j 标签与边类型。</p>
+</blockquote>
+<h3>最小例子（证券）</h3>
+<pre><code class="language-text">类：Company ⊇ ListedCompany
+关系：ListedCompany —LISTED_AS→ Stock
+约束：一只 Stock 至少对应一家 ListedCompany（业务规则可写成公理）
+</code></pre>
+<p>这三行合起来是一段完整的本体片段（<strong>类层次 + 关系 + 约束</strong>），不是随便画两个框一条线。</p>
+<h4>① <code>Company ⊇ ListedCompany</code></h4>
+<p>读作：<strong>Company 包含 ListedCompany</strong>，即 <strong>ListedCompany 是 Company 的子类</strong>。</p>
+<ul>
+<li><code>⊇</code>：集合上的「超集」符号 → 等价说法是 <code>ListedCompany ⊆ Company</code></li>
+<li>推论：若某实体是「上市公司」，则它一定也是「公司」</li>
+<li>类比：动物 ⊇ 狗 → 狗是动物的一种</li>
+</ul>
+<h4>② <code>ListedCompany —LISTED_AS→ Stock</code></h4>
+<p>读作：<strong>上市公司 通过关系 LISTED_AS 指向 股票</strong>。</p>
+<ul>
+<li>左边：关系起点类型（定义域）= <code>ListedCompany</code></li>
+<li>中间：关系名 ≈「上市为 / 对应证券」</li>
+<li>右边：关系终点类型（值域）= <code>Stock</code></li>
+</ul>
+<p>具体事实示例：</p>
+<pre><code class="language-text">贵州茅台(ListedCompany) —LISTED_AS→ 600519(Stock)
+</code></pre>
+<h4>③ 「一只 Stock 至少对应一家 ListedCompany」</h4>
+<p>这是对关系的<strong>基数约束（公理）</strong>：</p>
+<blockquote>
+<p>每个 <code>Stock</code> 至少有一条「从某家 ListedCompany 出发、指向它」的 <code>LISTED_AS</code> 边。</p>
+</blockquote>
+<ul>
+<li>不允许「孤儿股票代码」（有代码但图谱里挂不上公司）</li>
+<li>「至少一家」= 基数下界 ≥ 1（现实里多为 1 对 1，这里只强制不能为零）</li>
+</ul>
+<p><strong>合在一起的业务含义</strong>：先有「公司」大类，其中一部分是「上市公司」；上市公司可「上市为」某只股票；每只股票在图里都必须能挂到至少一家上市公司。</p>
+<h3>速记</h3>
+<ul>
+<li>本体回答：<strong>「这个领域里，词是什么意思、能不能连、有什么限制」</strong></li>
+<li><strong>TBox = 模式规矩</strong>；<strong>ABox = 实例事实</strong>；KB ≈ 两者之和</li>
+<li>不做本体 → 多源数据难融合，关系命名混乱，推理无从谈起</li>
+</ul>
+<hr>
+<h2>2. RDF / OWL</h2>
+<h3>RDF：资源描述框架</h3>
+<p><strong>一切皆三元组（Triple）</strong>：</p>
+<pre><code class="language-text">Subject  —Predicate→  Object
+主体     —谓词→       客体
+贵州茅台 —属于→       白酒行业
+</code></pre>
+<ul>
+<li>资源用 <strong>URI/IRI</strong> 标识（全球唯一）</li>
+<li>客体可以是资源，也可以是字面量（字符串、数字、日期）</li>
+<li>多条三元组连成 <strong>RDF 图</strong></li>
+</ul>
+<p><strong>为什么重要</strong>：同一事实用标准结构表达，不同系统能交换、能合并。</p>
+<h3>RDFS：轻量词汇层</h3>
+<p><strong>RDFS</strong> = <strong>RDF Schema</strong>（RDF 模式 / RDF 词汇描述语言）。</p>
+<ul>
+<li><strong>RDF</strong>：Resource Description Framework（资源描述框架）</li>
+<li><strong>Schema</strong>：模式（在 RDF 之上定义类、属性、定义域/值域等轻量语义词）</li>
+</ul>
+<p>在 RDF 之上增加常用语义词，例如：</p>
+<ul>
+<li><code>rdfs:subClassOf</code>：子类</li>
+<li><code>rdfs:domain</code> / <code>rdfs:range</code>：属性定义域/值域</li>
+<li><code>rdf:type</code>：实例属于某类</li>
+</ul>
+<p>→ 已能做<strong>有限推理</strong>（如：已知是子类实例 ⇒ 也是父类实例）。</p>
+<h3>OWL：更强的本体语言</h3>
+<p>OWL（<strong>Web Ontology Language</strong>，网络本体语言）在 RDFS 之上加强逻辑表达，常见能力：</p>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th>例子</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>等价/互斥</td>
+<td><code>Company ≡ Corporation</code>；<code>Person ⊥ Company</code></td>
+</tr>
+<tr>
+<td>属性特征</td>
+<td>对称、传递、函数性（最多一个值）</td>
+</tr>
+<tr>
+<td>基数约束</td>
+<td>一家公司恰好 1 个法人代表（业务上可建模）</td>
+</tr>
+<tr>
+<td>复杂类定义</td>
+<td>「有股票代码的公司 = 上市公司」</td>
+</tr>
+</tbody></table>
+<p><strong>推理器</strong>可据此推出未显式写入的事实（本体推理）。</p>
+<h3>OWL 最小工程示例（证券）</h3>
+<p>下面用 <strong>Turtle</strong> 语法写一份「能跑推理」的迷你本体（完整文件见 <a href="examples/securities-mini.ttl"><code>docs/examples/securities-mini.ttl</code></a>）。</p>
+<p>按 <strong>TBox / ABox</strong> 分开读会更清楚：</p>
+<table>
+<thead>
+<tr>
+<th>层级</th>
+<th>内容</th>
+<th>本例中的语句</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>TBox</strong></td>
+<td>3 条「规矩」</td>
+<td>① <code>ListedCompany</code> 是 <code>Company</code> 子类<br>② <code>Person</code> 与 <code>Company</code> 互斥<br>③ <code>listedAs</code>：定义域/值域 + 函数性</td>
+</tr>
+<tr>
+<td><strong>ABox</strong></td>
+<td>2 组「事实」</td>
+<td>茅台是 <code>ListedCompany</code>，并 <code>listedAs</code> 600519；600519 是 <code>Stock</code></td>
+</tr>
+</tbody></table>
+<pre><code class="language-turtle">@prefix :    &lt;http://example.org/sec#&gt; .
+@prefix owl: &lt;http://www.w3.org/2002/07/owl#&gt; .
+@prefix rdf: &lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#&gt; .
+@prefix rdfs:&lt;http://www.w3.org/2000/01/rdf-schema#&gt; .
+
+##### TBox：术语 / 模式 #####
+:Company        a owl:Class .
+:ListedCompany  a owl:Class ; rdfs:subClassOf :Company .
+:Stock          a owl:Class .
+:Person         a owl:Class ;
+                owl:disjointWith :Company .   # 互斥
+
+:listedAs a owl:ObjectProperty , owl:FunctionalProperty ;
+          rdfs:domain :ListedCompany ;
+          rdfs:range  :Stock .
+
+##### ABox：断言 / 实例 #####
+:Moutai a :ListedCompany ;
+        :listedAs :S600519 .
+:S600519 a :Stock .
+</code></pre>
+<p><strong>工程里怎么用（三步就够）：</strong></p>
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>做什么</th>
+<th>常用工具</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1. 建模</td>
+<td>用编辑器写/画上述公理与实例</td>
+<td><a href="https://protege.stanford.edu/">Protégé</a></td>
+</tr>
+<tr>
+<td>2. 推理</td>
+<td>启动推理器，自动补全隐含事实</td>
+<td>HermiT / Pellet（Protégé 内置可选）</td>
+</tr>
+<tr>
+<td>3. 消费</td>
+<td>查询推理后的图，或导出给业务系统</td>
+<td>SPARQL / 再导入图库</td>
+</tr>
+</tbody></table>
+<p><strong>推理器会多「算」出什么（你没手写的）：</strong></p>
+<pre><code class="language-text">:Moutai rdf:type :Company
+# 因为 ListedCompany ⊑ Company，实例继承父类
+</code></pre>
+<p>若有人误写 <code>:Moutai a :Person</code>，推理器会报<strong>不一致</strong>（与 <code>disjointWith Company</code> 冲突）——这就是 OWL 在工程上的价值：<strong>校验 + 自动补全</strong>，而不只是存数据。</p>
+<p><strong>和本仓库 Neo4j 的对照（务实结论）：</strong></p>
+<table>
+<thead>
+<tr>
+<th>OWL 做法</th>
+<th>本项目常见做法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>.ttl</code> + 推理器推 <code>Moutai</code> 也是 <code>Company</code></td>
+<td>入库时直接打上 <code>Company</code>/<code>ListedCompany</code> 标签，或应用层约定</td>
+</tr>
+<tr>
+<td><code>FunctionalProperty</code> 由推理器/校验器保证</td>
+<td>用约束、唯一索引或写入前校验</td>
+</tr>
+<tr>
+<td>适合语义互操作、强一致性校验</td>
+<td>适合业务查询、可视化、高吞吐</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>多数业务 KG：<strong>Neo4j 存运行数据，OWL/本体文档（或等价 Schema）定语义契约</strong>；只有强推理需求才上完整 OWL 推理栈。</p>
+</blockquote>
+<h3>OWL 与 RDFS 的关系</h3>
+<p><strong>OWL 建立在 RDF/RDFS 之上，是能力更强的一层；不是互相替代。</strong></p>
+<pre><code class="language-text">OWL   ← 更强的本体语言（逻辑更丰富，可做更复杂推理）
+ ↑
+RDFS  ← 轻量「词汇/模式」层（类、属性、定义域/值域、子类等）
+ ↑
+RDF   ← 底层数据模型（三元组）
+</code></pre>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>RDFS</th>
+<th>OWL</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>定位</td>
+<td>轻量 Schema</td>
+<td>完整本体语言</td>
+</tr>
+<tr>
+<td>典型能力</td>
+<td>类层次、属性定义域/值域</td>
+<td>等价/互斥、传递/对称、基数、复杂类定义…</td>
+</tr>
+<tr>
+<td>推理</td>
+<td>有限（继承类推等）</td>
+<td>更强（依赖所选 OWL 子集与推理器）</td>
+</tr>
+<tr>
+<td>复杂度</td>
+<td>低，好上手</td>
+<td>高，需注意 OWL Lite / DL / Full 等档位</td>
+</tr>
+</tbody></table>
+<p>一句话：</p>
+<ul>
+<li><strong>RDFS</strong>：先能描述「有哪些类、属性怎么连」</li>
+<li><strong>OWL</strong>：再能精确说「类能否等同/互斥、属性有无传递性、某类必须满足什么约束」</li>
+</ul>
+<p>实务：小项目用 RDFS 思想（甚至直接落到 Neo4j Schema）往往够用；要严格语义互操作或自动推理，再上 OWL。</p>
+<h3>RDF 栈速记</h3>
+<pre><code class="language-text">OWL（强逻辑） ⊃ RDFS（轻词汇） ⊃ RDF（三元组） ⊃ IRI + 字面量
+</code></pre>
+<p>（表达能力上大致如此；OWL 语句本身也常以 RDF 三元组形式序列化。）</p>
+<h3>和 Neo4j 属性图怎么对照</h3>
+<table>
+<thead>
+<tr>
+<th>RDF 世界</th>
+<th>Neo4j 属性图（本项目）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>资源（IRI）</td>
+<td>节点 + <code>id</code>/<code>name</code></td>
+</tr>
+<tr>
+<td><code>rdf:type</code></td>
+<td>标签 Label / <code>entityType</code></td>
+</tr>
+<tr>
+<td>谓词</td>
+<td>关系类型 RelType</td>
+</tr>
+<tr>
+<td>字面量</td>
+<td>节点/关系属性</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>属性图更工程友好；RDF/OWL 更偏语义网与严格推理。证券业务系统多数用 Neo4j，但<strong>本体思想仍要保留</strong>。</p>
+</blockquote>
+<h3>速记</h3>
+<ul>
+<li>RDF：<strong>统一的「主-谓-宾」信封</strong></li>
+<li>RDFS：<strong>信封上的轻量标签（类层次、定义域/值域）</strong></li>
+<li>OWL：<strong>在信封上写清更强逻辑规则，让机器会推</strong></li>
+</ul>
+<hr>
+<h2>3. Embedding（知识表示学习）</h2>
+<h3>核心定义</h3>
+<p>把实体、关系映射到低维稠密向量，使<strong>图结构与语义</strong>体现在向量空间的几何关系中。</p>
+<pre><code class="language-text">实体 e → 向量 e⃗ ∈ R^d
+关系 r → 向量/矩阵 参数
+目标：真实三元组 (h,r,t) 得分高，假三元组得分低
+</code></pre>
+<h3>为什么需要它</h3>
+<p>符号表示（Ontology/RDF）擅长精确与可解释；但面对：</p>
+<ul>
+<li>大规模稀疏图</li>
+<li>缺失链接要预测</li>
+<li>语义相似要计算</li>
+</ul>
+<p>→ Embedding 更擅长做<strong>补全、检索、推荐、聚类</strong>。</p>
+<h3>经典范式（只记直觉）</h3>
+<table>
+<thead>
+<tr>
+<th>模型族</th>
+<th>直觉</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>TransE</strong> 等平移模型</td>
+<td><code>h⃗ + r⃗ ≈ t⃗</code>（头实体加关系 ≈ 尾实体）</td>
+</tr>
+<tr>
+<td><strong>双线性/语义匹配</strong></td>
+<td>用矩阵/张量给 <code>(h,r,t)</code> 打分</td>
+</tr>
+<tr>
+<td><strong>图神经网络 GNN</strong></td>
+<td>邻居消息传递，学节点表示</td>
+</tr>
+</tbody></table>
+<h3>能做什么</h3>
+<ol>
+<li><strong>链接预测</strong>：可能还缺哪条边？</li>
+<li><strong>实体相似度</strong>：向量近 ⇒ 语义/结构近</li>
+<li><strong>与 NLP 对齐</strong>：文本向量 ↔ 实体向量（多模态 KG）</li>
+</ol>
+<h3>和符号表示的关系</h3>
+<pre><code class="language-text">符号层（Ontology/RDF/图库）  ←精确、可审计、可规则推理
+        ↕ 可互相增强
+向量层（Embedding）         ←模糊匹配、补全、端到端学习
+</code></pre>
+<p>生产上常见组合：<strong>Neo4j 存真源事实 + Embedding 做召回/预测 + 规则做校验</strong>。</p>
+<h3>速记</h3>
+<ul>
+<li>Embedding 回答：<strong>「谁和谁像、缺的边可能是什么」</strong></li>
+<li>不是替换本体，而是给知识图谱加上<strong>可计算的几何层</strong></li>
+</ul>
+<hr>
+<h2>对照一张表（考试/面试够用）</h2>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Ontology</th>
+<th>RDF/OWL</th>
+<th>Embedding</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>表示形态</td>
+<td>概念模型</td>
+<td>三元组 + 公理</td>
+<td>稠密向量</td>
+</tr>
+<tr>
+<td>人是否好读</td>
+<td>高</td>
+<td>中</td>
+<td>低</td>
+</tr>
+<tr>
+<td>精确推理</td>
+<td>靠约定/规则</td>
+<td>强（OWL）</td>
+<td>弱（统计）</td>
+</tr>
+<tr>
+<td>相似度/补全</td>
+<td>弱</td>
+<td>弱</td>
+<td>强</td>
+</tr>
+<tr>
+<td>典型工具</td>
+<td>Protégé、自研 Schema</td>
+<td>Jena、OWL 推理器</td>
+<td>PyKEEN、DGL-KE、GNN</td>
+</tr>
+<tr>
+<td>证券 KG 落点</td>
+<td>定 Company/Stock…</td>
+<td>可映射或省略</td>
+<td>后续做荐股/关联挖掘可加</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>5 分钟自测</h2>
+<ol>
+<li>本体的四个基本构件是什么？</li>
+<li>TBox 和 ABox 各装什么？各举一个证券例子。</li>
+<li>为什么说 RDF 的基本单位是三元组？</li>
+<li>RDFS 和 OWL 差在哪一档？</li>
+<li>TransE 的几何直觉是什么？</li>
+<li>符号表示与 Embedding 如何分工？</li>
+</ol>
+<p><strong>参考答案要点</strong>：①类/个体/属性/公理 ②TBox=模式规矩（如子类/互斥）；ABox=实例事实（如茅台是上市公司） ③主谓宾统一编码事实 ④OWL 逻辑表达与推理更强 ⑤头+关系≈尾 ⑥符号保真与可解释，向量做补全与相似计算。</p>
+<hr>
+<h2>建议学习顺序</h2>
+<ol>
+<li>先画本领域 <strong>Ontology / TBox 草图</strong>（类 + 关系 + 少量公理）</li>
+<li>用 <strong>三元组思维</strong>检查每条业务事实（ABox）能否写成 <code>(s,p,o)</code></li>
+<li>落到 <strong>Neo4j</strong>（本仓库已在做）</li>
+<li>有规模与补全需求时再学 <strong>Embedding</strong></li>
+</ol>
+
+      <nav class="pager"><a href="index.html">← 总览</a><a href="2-知识获取.html">2 获取 →</a></nav>
+    </article>
+  </main>
+  <footer class="footer">
+    由 <code>md/build-site.mjs</code> 从 Markdown 生成 · 可直接静态部署 <code>md/site/</code>
+  </footer>
+</body>
+</html>
